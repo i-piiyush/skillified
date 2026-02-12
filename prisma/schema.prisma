@@ -1,0 +1,108 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String                @id @default(uuid())
+  name                  String
+  email                 String                @unique
+  domain                String
+  createdAt             DateTime              @default(now()) @map("created_at")
+  attempts              Attempt[]
+  userQuestionHistories UserQuestionHistory[]
+
+  @@map("users")
+}
+
+model Skill {
+  id          String       @id
+  name        String
+  questions   Question[]
+  attempts    Attempt[]
+  skillScores SkillScore[]
+
+  @@map("skills")
+}
+
+enum QuestionType {
+  mcq
+  output
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  domain        String
+  skillId       String       @map("skill_id")
+  type          QuestionType
+  text          String
+  options       Json?
+  correctAnswer String       @map("correct_answer")
+
+  //relations
+  skill          Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  attemptAnswers AttemptAnswer[]
+
+  @@index([skillId])
+  @@map("questions")
+}
+
+enum ModeType {
+  full
+  skill
+}
+
+model Attempt {
+  id             String          @id @default(uuid())
+  userId         String          @map("user_id")
+  mode           ModeType
+  skillId        String?         @map("skill_id")
+  overallScore   Float           @map("overall_score")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  attemptAnswers AttemptAnswer[]
+  //relations
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  skill Skill? @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId])
+  @@map("attempts")
+}
+
+model AttemptAnswer {
+  id         String  @id @default(uuid())
+  attemptId  String  @map("attempt_id")
+  questionId String  @map("question_id")
+  userAnswer String  @map("user_answer")
+  isCorrect  Boolean @map("is_correct")
+
+  //relations
+  attempt  Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("attempted_answers")
+}
+
+model SkillScore {
+  id        String @id @default(uuid())
+  attemptId String @map("attempt_id")
+  skillId   String @map("skill_id")
+  correct   Int
+  total     Int
+  percent   Float
+
+  //relations
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+}
+
+model UserQuestionHistory {
+  userId     String @id @map("user_id")
+  questionId String @map("question_id")
+  timesSeen  Int    @map("times_seen")
+
+  //relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
