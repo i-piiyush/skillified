@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { v4 as uuidv4 } from "uuid";
-import { fetchTest } from "@/lib/gemini";
-
+import { fetchStack, fetchTest } from "@/lib/gemini";
+import { prisma } from "@/lib/prisma";
 
 export const POST = async (req: Request) => {
   const body = await req.json();
@@ -19,36 +19,39 @@ export const POST = async (req: Request) => {
   }
 
   try {
-    const cookieStore = await cookies();
-    const userCookie = cookieStore.get("user");
-    const user = userCookie ? JSON.parse(userCookie.value) : null;
+    const user = await prisma.user.findFirst({
+      where: {
+        name: name,
+      },
+    });
 
     if (!user) {
-      const newUser = {
-        name: name,
-        domain: domain,
-        id: uuidv4(),
-      };
-      cookieStore.set("user", JSON.stringify(newUser), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+      const newUser = await prisma.user.create({
+        data: {
+          name: name,
+          domain: domain,
+          stack: ["Next.js", "React", "Tailwind CSS"], // Must be an array of strings
+          email: "piyush@example.com", // Now optional, you can omit this line entirely
+        },
       });
+
+      return NextResponse.json(
+        {
+          message: "user created",
+          success: true,
+          user: newUser,
+        },
+        { status: 201 },
+      );
     }
-  
-    console.log("test running!!");
-    const test = await fetchTest(domain)
-    console.log("fetched testtt ",test)
 
     return NextResponse.json(
       {
-        message: "Test Generated",
+        message: "user fetched",
         success: true,
-        data:user,
-        test:test
+        user: user,
       },
-      { status: 201 },
+      { status: 200 },
     );
   } catch (error) {
     console.log("error starting test... ", error);

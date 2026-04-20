@@ -1,16 +1,19 @@
 datasource db {
   provider = "postgresql"
+  
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 model User {
   id                    String                @id @default(uuid())
   name                  String
-  email                 String                @unique
+  email                 String?                @unique
   domain                String
+  stack                 String[]
   createdAt             DateTime              @default(now()) @map("created_at")
   attempts              Attempt[]
   userQuestionHistories UserQuestionHistory[]
