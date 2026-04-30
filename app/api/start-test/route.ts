@@ -1,55 +1,64 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { v4 as uuidv4 } from "uuid";
-import { fetchStack, fetchTest } from "@/lib/gemini";
+import {  fetchTest } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 
 export const POST = async (req: Request) => {
   const body = await req.json();
-  const { name, domain } = body;
+  const { name, domain,email,stack,role } = body;
 
-  if (!name || !domain) {
+  if (!name || !domain || !email || !stack || !role) {
     return NextResponse.json(
       {
-        message: "Name and domain can't be empty",
+        message: "Name, domain, email, role or stack can't be empty",
         success: false,
       },
       { status: 400 },
     );
   }
 
+  const updatedStack = stack.split(" + ")
+
   try {
-    const user = await prisma.user.findFirst({
+    const user = await prisma.user.findUnique({
       where: {
-        name: name,
+        email: email,
       },
     });
 
+    
+
     if (!user) {
-      const newUser = await prisma.user.create({
+      await prisma.user.create({
         data: {
           name: name,
           domain: domain,
-          stack: ["Next.js", "React", "Tailwind CSS"], // Must be an array of strings
-          email: "piyush@example.com", // Now optional, you can omit this line entirely
+          stack: updatedStack, // Must be an array of strings
+          email: email, // Now optional, you can omit this line entirely
+          role:role
         },
       });
 
-      return NextResponse.json(
-        {
-          message: "user created",
-          success: true,
-          user: newUser,
-        },
-        { status: 201 },
-      );
+    
     }
+
+    const testResults = await fetchTest(domain,10,updatedStack)
+    if (testResults.length < 1){
+      return NextResponse.json(
+      {
+        message: "Error generating test, Please try again later",
+        success: false,
+      },
+      { status: 500 },
+    );
+    }
+    
+
 
     return NextResponse.json(
       {
-        message: "user fetched",
+        message: "test fetched",
         success: true,
-        user: user,
+        testResults
       },
       { status: 200 },
     );

@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+
+@theme {
+  /* Colors from image_016db6.png */
+  --color-chestnut: #8C271E;
+  --color-khaki: #ABA194;
+  --color-dust: #CFCBCA;
+  --color-alabaster: #D8DDDE;
+  
+  /* You can also define custom spacing or shadows here if needed */
+  --shadow-soft: 0 4px 20px -2px rgba(140, 39, 30, 0.1);
+}
+
 body {
   background-color: white;
 }

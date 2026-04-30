@@ -183,7 +183,7 @@ export const fetchTest = async (
 
       try {
         const result = await ai.models.generateContent({
-          model: "gemini-1.5-flash-8b",
+          model: "gemini-2.5-flash-lite",
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {
             maxOutputTokens: 8192, // Ensure it doesn't cut off early due to token limits
