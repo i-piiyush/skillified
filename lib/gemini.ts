@@ -1,259 +1,292 @@
 import { GoogleGenAI } from "@google/genai";
-import { v4 as uuidv4 } from "uuid";
+import { prisma } from "./prisma";
 
 const ai = new GoogleGenAI({});
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const TARGET_COUNT = 10;
+const BATCH_SIZE = 10;
+
+const LEVEL_DISTRIBUTION = [
+  { level: 0, label: "easy" as const,   weight: 0.34 },
+  { level: 1, label: "medium" as const, weight: 0.33 },
+  { level: 2, label: "hard" as const,   weight: 0.33 },
+];
 
 const hashQuestion = (text: string, code?: string | null) => {
   const base = code ? code : text;
   return base.toLowerCase().replace(/\s+/g, " ").trim();
 };
 
-// How to split 50 questions: 17 easy, 17 medium, 16 hard
-const LEVEL_DISTRIBUTION = [
-  { level: 0, label: "easy", weight: 0.34 }, // ~17/50
-  { level: 1, label: "medium", weight: 0.34 }, // ~17/50
-  { level: 2, label: "hard", weight: 0.32 }, // ~16/50
-];
-
-/**
- * Generates an optimized prompt for test question generation
- * Includes explicit difficulty guidance, format specs, and quality criteria
- */
 const generateTestPrompt = (
   domain: string,
-  stack: string,
+  stack: string[],          // ← string[]
+  role: string,
   difficulty: "easy" | "medium" | "hard",
   neededCount: number,
-  existingQuestions?: Array<{ text: string; code?: string }>,
+  existingQuestions: Array<{ text: string; code?: string | null }>,
 ): string => {
-  const existingContext =
-    existingQuestions && existingQuestions.length > 0
-      ? `
-ALREADY GENERATED QUESTIONS (avoid these):
-${existingQuestions
-  .slice(0, 10) // Show only recent 10 to save tokens
-  .map(
-    (q, i) =>
-      `${i + 1}. "${q.text.slice(0, 50)}..."${q.code ? ` [with code]` : ""}`,
-  )
-  .join("\n")}
+  const stackLabel = stack.join(", ");  // ← join for prompt display
 
-CRITICAL: Do not regenerate or rephrase these. Create entirely new questions.`
+  const existingContext =
+    existingQuestions.length > 0
+      ? `
+ALREADY GENERATED (do NOT repeat or rephrase these):
+${existingQuestions
+  .slice(-10)
+  .map((q, i) => `${i + 1}. "${q.text.slice(0, 60)}"`)
+  .join("\n")}`
       : "";
 
-  const difficultyGuidance: Record<string, string> = {
+  const difficultyGuidance = {
     easy: `
-EASY LEVEL REQUIREMENTS:
+EASY LEVEL:
 - Fundamental concepts, basic syntax, definitions
-- Single concept per question
-- No edge cases or tricky logic
-- Example: "What does the keyword 'async' do in JavaScript?"
-- Include recognition/recall questions (fill-the-blank, definition matching)
-- Accuracy: Test foundational understanding, not problem-solving`,
+- Single concept per question, no edge cases
+- Test foundational understanding`,
     medium: `
-MEDIUM LEVEL REQUIREMENTS:
+MEDIUM LEVEL:
 - Combine 2-3 concepts, real-world scenarios
 - Require understanding of interactions & trade-offs
-- Real code patterns from the stack
-- Example: "How do you handle async errors in ${stack}?"
-- Include scenario-based questions
-- Accuracy: Test application and integration of concepts`,
+- Test application and integration of concepts`,
     hard: `
-HARD LEVEL REQUIREMENTS:
+HARD LEVEL:
 - Edge cases, optimization, architectural decisions
-- Require deep domain knowledge + problem-solving
-- Production-level scenarios
-- Example: "Given [complex scenario], optimize for [constraint]"
-- Include debugging & code-reading questions
-- May have subtle "gotcha" correct answers
-- Accuracy: Test mastery, optimization mindset, real-world debugging`,
+- Production-level scenarios, debugging questions
+- Test mastery and real-world problem-solving`,
   };
 
-  return `You are an expert technical test creator for ${domain} development using ${stack}.
+  const level = difficulty === "easy" ? 0 : difficulty === "medium" ? 1 : 2;
 
-TASK: Generate EXACTLY ${neededCount} unique, non-repetitive ${difficulty.toUpperCase()} level questions. DO NOT STOP EARLY.
+  return `You are a technical interviewer for ${domain} (${stackLabel}) creating questions for a ${role} position.
 
-DOMAIN: ${domain}
-TECH STACK: ${stack}
-DIFFICULTY LEVEL: ${difficulty}
-QUESTION COUNT NEEDED: ${neededCount}
+Generate EXACTLY ${neededCount} ${difficulty.toUpperCase()} questions. DO NOT STOP EARLY.
 ${existingContext}
-
-═══════════════════════════════════════════════════════════════════════════
 
 ${difficultyGuidance[difficulty]}
 
-═══════════════════════════════════════════════════════════════════════════
+QUESTION TYPES (split evenly):
+- MCQ: 4 short plain-text options, exactly 1 correct. Distribute correct answer across A/B/C/D.
+- OUTPUT: "What does this code output?" — correctAnswer is ONLY the exact output value.
 
-QUALITY STANDARDS:
-✓ Each question tests a DIFFERENT concept or scenario
-✓ No two questions should have the same core question being asked
-✓ Questions are specific to ${stack} when applicable
-✓ Answers are definitively correct (not opinion-based)
-✓ Language is clear, professional, and unambiguous
-✓ Code examples (if included) follow ${stack} best practices
-✓ MCQ options are plausible but clearly distinguishable
+RULES:
+- MCQ options: short plain strings only. NO arrays, NO JSON inside options.
+- OUTPUT options: must be empty array [].
+- OUTPUT correctAnswer: scalar only — "42", "undefined", "true", "TypeError". NO long arrays.
+- skillId: kebab-case topic e.g. "js-closures", "react-hooks", "node-event-loop"
 
-QUESTION COMPOSITION:
-- 50% MCQ (Multiple Choice Questions) - with 4 options each, only 1 correct. Conceptual questions MUST be MCQs.
-- 50% OUTPUT (Strictly code execution output) - expecting an exact literal value only.
+CODE FIELD RULES (critical to avoid JSON errors):
+- If question needs code: write it as a plain string with literal newlines escaped as \\n
+- Escape any double quotes inside code as \\"
+- Keep code snippets SHORT (under 10 lines) to avoid truncation
+- If no code needed: use empty string ""
 
-MCQ GUIDELINES:
-- Option A: Most common wrong answer (plausible mistake)
-- Option B: Second most common wrong answer
-- Option C: Less plausible but sounds technical
-- Option D: Correct answer OR distributed across A-D for variety
-- Avoid: "All of above", "None of above", "A and B"
-
-OUTPUT QUESTION GUIDELINES (STRICTLY ENFORCED):
-- MUST be literal code output questions. Ask: "What will this code print/return?" or "What is the exact output?"
-- The \`correctAnswer\` MUST be ONLY the exact literal output (e.g., "phew", "42", "undefined", "[1, 2, 3]").
-- STRICTLY NO explanations, NO sentences, NO context. Just the exact output string.
-- If the code throws an error, the \`correctAnswer\` should be the exact error name (e.g., "TypeError").
-
-DIVERSITY TARGETS:
-- Cover different subsystems/modules of ${domain}
-- Mix question types: pure knowledge, scenario-based, debugging, optimization
-- Vary code snippet lengths (some short snippets, some with context)
-
-STACK-SPECIFIC CONTEXT:
-- Reference ${stack} conventions, libraries, patterns
-- Include common ${stack} pitfalls and best practices
-- Use realistic ${stack} code scenarios
-
-═══════════════════════════════════════════════════════════════════════════
-
-RESPONSE FORMAT (STRICT JSON):
+RESPONSE — valid JSON only, no markdown, no backticks:
 {
   "questions": [
     {
-      "id": "auto-generated-uuid",
-      "type": "mcq" or "output",
-      "level": ${difficulty === "easy" ? 0 : difficulty === "medium" ? 1 : 2},
-      "text": "Clear, specific question text",
-      "code": "code snippet if applicable, null otherwise",
-      "options": ["Option A", "Option B", "Option C", "Option D"] or null for output,
-      "correctAnswer": "The exact correct answer (literal phrase/value for 'output' type)"
+      "skillId": "topic-slug",
+      "type": "mcq",
+      "level": ${level},
+      "text": "Question text here",
+      "code": "",
+      "options": ["wrong answer", "wrong answer", "wrong answer", "correct answer"],
+      "correctAnswer": "correct answer"
+    },
+    {
+      "skillId": "topic-slug",
+      "type": "output",
+      "level": ${level},
+      "text": "What is the output of this code?",
+      "code": "console.log(1 + '2');",
+      "options": [],
+      "correctAnswer": "12"
     }
   ]
 }
 
-- All string values (especially the "code" field) MUST properly escape all double quotes (\") and newlines (\n).
-- NEVER use raw multi-line strings for the "code" field. It must be a single-line string with \n characters.
-
-CRITICAL CHECKLIST BEFORE RESPONDING:
-□ Total questions generated MUST BE EXACTLY = ${neededCount}. Do not truncate the list!
-□ Each question is unique (different concept/scenario)
-□ JSON is valid and parseable
-□ correctAnswer for 'output' type contains NO explanations, ONLY the exact output
-□ Code examples (if any) are syntactically valid
-
-NOW GENERATE EXACTLY ${neededCount} QUESTIONS:`;
+Generate EXACTLY ${neededCount} questions now:`;
 };
+
+async function callGemini(prompt: string, neededNow: number): Promise<any[]> {
+  const MAX_RETRIES = 4;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                minItems: neededNow,
+                maxItems: neededNow,
+                items: {
+                  type: "object",
+                  properties: {
+                    skillId:       { type: "string" },
+                    type:          { type: "string", enum: ["mcq", "output"] },
+                    level:         { type: "number" },
+                    text:          { type: "string" },
+                    code:          { type: "string" },
+                    options:       { type: "array", items: { type: "string" } },
+                    correctAnswer: { type: "string" },
+                  },
+                  required: ["skillId", "type", "level", "text", "code", "correctAnswer", "options"],
+                },
+              },
+            },
+            required: ["questions"],
+          },
+        },
+      });
+
+      const text = result.text;
+      if (!text) throw new Error("Empty response from Gemini");
+
+      const clean = text
+        .trim()
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```\s*$/i, "");
+
+      const parsed = JSON.parse(clean);
+      return parsed.questions ?? [];
+
+    } catch (err: any) {
+      const is429 =
+        err?.status === 429 ||
+        err?.message?.includes("429") ||
+        err?.message?.includes("RESOURCE_EXHAUSTED");
+
+      if (is429) {
+        const wait = 10_000 * Math.pow(2, attempt - 1);
+        console.warn(`⏳ Rate limited (attempt ${attempt}/${MAX_RETRIES}). Waiting ${wait / 1000}s...`);
+        await sleep(wait);
+        continue;
+      }
+
+      console.error(`❌ Attempt ${attempt} failed: ${err?.message}`);
+      if (attempt < MAX_RETRIES) {
+        await sleep(3000);
+        continue;
+      }
+
+      return [];
+    }
+  }
+
+  return [];
+}
 
 export const fetchTest = async (
   domain: string,
-  targetCount = 50,
-  stack: string,
+  stack: string[],          // ← string[]
+  role: string,
+  onProgress?: (saved: number, total: number) => void,
 ) => {
-  const allQuestions: any[] = [];
+  type PrismaQuestion = {
+    domain: string;
+    stack: string[];          // ← string[]
+    role: string;
+    skillId: string;
+    type: "mcq" | "output";
+    text: string;
+    code: string | null;
+    options: string[];
+    correctAnswer: string;
+    level: number;
+  };
+
+  const allQuestions: PrismaQuestion[] = [];
   const seenHashes = new Set<string>();
 
   for (const { level, label, weight } of LEVEL_DISTRIBUTION) {
-    const levelTarget = Math.max(1, Math.round(targetCount * weight));
-    let levelQuestionsCount = 0;
-    let attempts = 0;
-    const maxAttempts = 5; // Increased attempts just in case it drops one or two duplicates
+    const levelTarget = Math.max(1, Math.round(TARGET_COUNT * weight));
+    let levelCount = 0;
+    let emptyBatchStreak = 0;
 
-    if (allQuestions.length >= targetCount) break;
+    console.log(`\n📚 [${label.toUpperCase()}] Target: ${levelTarget} questions`);
 
-    while (levelQuestionsCount < levelTarget && attempts < maxAttempts) {
-      attempts++;
-      const neededNow = levelTarget - levelQuestionsCount;
+    while (levelCount < levelTarget) {
+      const remaining = levelTarget - levelCount;
+      const neededNow = Math.min(BATCH_SIZE, remaining);
+
+      console.log(`  → Requesting batch of ${neededNow} (${levelCount}/${levelTarget} done)`);
 
       const prompt = generateTestPrompt(
         domain,
-        stack,
-        label as "easy" | "medium" | "hard",
+        stack,          // ← pass array directly, no stack[]
+        role,
+        label,
         neededNow,
         allQuestions,
       );
-      // Helper function to pause execution
-      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-      try {
-        const result = await ai.models.generateContent({
-          model: "gemini-2.5-flash-lite",
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          config: {
-            maxOutputTokens: 8192, // Ensure it doesn't cut off early due to token limits
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "object",
-              properties: {
-                questions: {
-                  type: "array",
-                  minItems: neededNow, // STRICT SCHEMA CONSTRAINT
-                  maxItems: neededNow, // STRICT SCHEMA CONSTRAINT
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string" },
-                      domain: { type: "string" },
-                      skillId: { type: "string" },
-                      type: { type: "string", enum: ["mcq", "output"] },
-                      level: { type: "number" },
-                      text: { type: "string" },
-                      code: { type: "string" },
-                      options: { type: "array", items: { type: "string" } },
-                      correctAnswer: { type: "string" },
-                    },
-                    required: ["type", "level", "text", "correctAnswer"],
-                  },
-                },
-              },
-              required: ["questions"],
-            },
-          },
+      const batch = await callGemini(prompt, neededNow);
+
+      if (batch.length === 0) {
+        emptyBatchStreak++;
+        console.warn(`  ⚠️ Empty batch (streak: ${emptyBatchStreak})`);
+        if (emptyBatchStreak >= 3) {
+          console.error(`  ❌ 3 empty batches in a row for [${label}] — moving on`);
+          break;
+        }
+        await sleep(5000);
+        continue;
+      }
+
+      emptyBatchStreak = 0;
+
+      const validBatch: PrismaQuestion[] = [];
+
+      for (const q of batch) {
+        if (levelCount >= levelTarget) break;
+        if (!q.text || !q.correctAnswer || !q.type) continue;
+
+        const hash = hashQuestion(q.text, q.code);
+        if (seenHashes.has(hash)) continue;
+        seenHashes.add(hash);
+
+        validBatch.push({
+          domain,
+          stack,          // ← string[] passed directly, Prisma handles it
+          role,
+          skillId: q.skillId || "general",
+          type: q.type,
+          text: q.text,
+          code: q.code && q.code.trim() !== "" ? q.code : null,
+          options: Array.isArray(q.options) ? q.options : [],
+          correctAnswer: q.correctAnswer,
+          level,
         });
 
-        const responseText = result.text;
-        if (!responseText) throw new Error("Empty response");
-        let parsed;
-        try {
-          parsed = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error("❌ JSON Parse Failed!");
-          console.error("Raw LLM Output that caused the crash:", responseText);
-          throw parseError; // Re-throw to trigger the retry loop
-        }
+        levelCount++;
+      }
 
-        const batch = parsed.questions ?? [];
+      if (validBatch.length > 0) {
+        await prisma.question.createMany({
+          data: validBatch,
+          skipDuplicates: true,
+        });
+        allQuestions.push(...validBatch);
+        onProgress?.(allQuestions.length, TARGET_COUNT);
+        console.log(`  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`);
+      }
 
-        for (const q of batch) {
-          if (allQuestions.length >= targetCount) break;
-          if (levelQuestionsCount >= levelTarget) break; // Prevent overfilling if neededNow was calculated
-
-          const hash = hashQuestion(q.text, q.code);
-          if (!seenHashes.has(hash)) {
-            seenHashes.add(hash);
-            allQuestions.push({
-              ...q,
-              id: uuidv4(),
-              domain,
-              level: level,
-            });
-            levelQuestionsCount++;
-          }
-        }
-
-        await sleep(2000)
-      } catch (err) {
-        console.error(`Level ${label} attempt ${attempts} failed:`, err);
+      if (levelCount < levelTarget) {
+        await sleep(7000);
       }
     }
   }
 
+  console.log(`\n✅ Done. Generated ${allQuestions.length} questions total.`);
   return allQuestions;
 };
 
@@ -279,7 +312,7 @@ RESPONSE FORMAT (STRICT JSON):
 Now suggest relevant stacks for: "${domain}"`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",

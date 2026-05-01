@@ -28,12 +28,15 @@ enum QuestionType {
 model Question {
   id            String       @id @default(uuid())
   domain        String
-  skillId       String       @map("skill_id")
+  skillId       String       
   type          QuestionType
   text          String
-  options       Json?
-  correctAnswer String       @map("correct_answer")
+  options       String[]
+  correctAnswer String       
   level         Int
+  stack         String[]
+  role          String
+  code         String?
 
-  @@index([skillId])
+ 
 }

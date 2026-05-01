@@ -41,7 +41,7 @@ export const POST = async (req: Request) => {
     
     }
 
-    const testResults = await fetchTest(domain,10,updatedStack)
+    const testResults = await fetchTest(domain,updatedStack,role)
     if (testResults.length < 1){
       return NextResponse.json(
       {
@@ -53,6 +53,19 @@ export const POST = async (req: Request) => {
     }
     
 
+  //  testResults.forEach(async(test)=>(
+  //   await prisma.question.create({
+  //     data:{
+  //       domain:test.domain,
+  //       skillId:test.skillId,
+  //       type:test.type,
+  //       text:test.text,
+  //       options:test.options,
+  //       correctAnswer:test.correctAnswer,
+  //       level:test.level
+  //     }
+  //   })
+  //  ))
 
     return NextResponse.json(
       {

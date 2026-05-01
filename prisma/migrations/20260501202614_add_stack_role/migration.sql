@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Question" ALTER COLUMN "stack" SET NOT NULL,
+ALTER COLUMN "stack" SET DATA TYPE TEXT;
