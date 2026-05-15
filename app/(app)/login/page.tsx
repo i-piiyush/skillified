@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, X, Sparkles, Loader2 } from "lucide-react";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 // Constants
 const ROLES = [
@@ -53,6 +54,7 @@ export default function RegistrationPage() {
 
   const stackRef = useRef<HTMLDivElement>(null);
   const domainRef = useRef<HTMLDivElement>(null);
+  const router = useRouter()
 
   // Click outside handlers
   useEffect(() => {
@@ -91,6 +93,23 @@ export default function RegistrationPage() {
       setLoading(false);
     }
   };
+
+  const submitUser = async () => {
+    try {
+      setLoading(true)
+      const res = await axios.post("/api/create-user", form)
+      localStorage.setItem("userId", res.data.userId) 
+      console.log("res: ",res)
+      router.push("/test")
+
+    } catch (error) {
+      console.log(error)
+    }
+    finally{
+      setLoading(false);
+    }
+  }
+
 
   const handleNext = () => {
     if (step === 0) {
@@ -314,8 +333,8 @@ export default function RegistrationPage() {
               </button>
             ) : (
               // Final primary button changed to chestnut
-              <button className="w-full bg-chestnut text-white py-4 rounded-2xl font-sans font-bold hover:bg-chestnut/90 transition-all shadow-xl" onClick={()=>console.log(form)}>
-                Start Assessment
+              <button className="w-full bg-chestnut text-white py-4 rounded-2xl font-sans font-bold hover:bg-chestnut/90 transition-all shadow-xl" onClick={()=>submitUser()}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Start Assessment"}
               </button>
             )}
           </div>

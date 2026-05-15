@@ -9,15 +9,50 @@ generator client {
 
 model User {
   id        String   @id @default(uuid())
-  level     Float    @default(0.0)
+  level     Int    @default(1)
   role      String
   name      String
   email     String?  @unique
   domain    String
   stack     String[]
   createdAt DateTime @default(now()) @map("created_at")
+   testSessions TestSession[] 
 
   @@map("users")
+}
+
+enum TestStatus {
+  in_progress
+  completed
+}
+
+model TestSession {
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  domain        String
+  stack         String[]
+  role          String
+  currentDiff   Int          @default(1)
+  score         Int          @default(0)
+  totalAnswered Int          @default(0)
+  status        TestStatus   @default(in_progress)
+  answeredIds   String[]     @default([])
+  createdAt     DateTime     @default(now())
+
+  answers       TestAnswer[]
+}
+
+model TestAnswer {
+  id         String   @id @default(uuid())
+  sessionId  String
+  session    TestSession @relation(fields: [sessionId], references: [id])
+  questionId String
+  userAnswer String
+  isCorrect  Boolean
+  difficulty Int
+  points     Int
+  createdAt  DateTime @default(now())
 }
 
 enum QuestionType {
