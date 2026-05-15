@@ -9,7 +9,7 @@ export const POST = async (req: Request) => {
     return NextResponse.json(
       {
         success: false,
-        message: "question,session or correct question can't be empty",
+        message: "question, session or correct question can't be empty",
       },
       { status: 400 },
     );
@@ -31,12 +31,10 @@ export const POST = async (req: Request) => {
     }
 
     const question = await prisma.question.findUnique({
-      where: {
-        id: questionId,
-      },
+      where: { id: questionId },
     });
 
-    if (!question)
+    if (!question) {
       return NextResponse.json(
         {
           message: "invalid question",
@@ -44,6 +42,7 @@ export const POST = async (req: Request) => {
         },
         { status: 400 },
       );
+    }
 
     const isCorrect =
       question.correctAnswer.trim().toLowerCase() ===
@@ -60,7 +59,7 @@ export const POST = async (req: Request) => {
       }
     }
 
-    const nextDiff = correctAnswer
+    const nextDiff = isCorrect
       ? Math.min(2, existingSession.currentDiff + 1)
       : Math.max(0, existingSession.currentDiff - 1);
 
@@ -72,13 +71,14 @@ export const POST = async (req: Request) => {
       data: {
         sessionId,
         questionId,
-        userAnswer:correctAnswer,
+        userAnswer: correctAnswer,
         isCorrect,
         difficulty: existingSession.currentDiff,
         points,
       },
     });
 
+    console.log({ nextDiff, isCorrect, correctAnswer: question.correctAnswer });
     // Update session
     await prisma.testSession.update({
       where: { id: sessionId },
@@ -92,65 +92,89 @@ export const POST = async (req: Request) => {
     });
 
     // If test complete — no next question
-  if (isComplete) {
-    return Response.json({
-      correct: isCorrect,
-      correctAnswer: question!.correctAnswer,
-      points,
-      score: existingSession.score + points,
-      progress: { current: 10, total: 10 },
-      isComplete: true,
-      nextQuestion: null,
-    });
-  }
+    if (isComplete) {
+      return Response.json({
+        correct: isCorrect,
+        correctAnswer: question.correctAnswer,
+        points,
+        score: existingSession.score + points,
+        progress: { current: 10, total: 10 },
+        isComplete: true,
+        nextQuestion: null,
+      });
+    }
 
-  // Pick next question based on new difficulty
-  const nextQuestion = await prisma.question.findFirst({
-    where: {
+ 
+    const targetWhere = {
       domain: existingSession.domain,
       role: existingSession.role,
       level: nextDiff,
-      id: { notIn: newAnsweredIds },  // never repeat
-    },
-    select: {
-      id: true,
-      text: true,
-      code: true,
-      type: true,
-      options: true,
-      skillId: true,
-      level: true,
-      // correctAnswer NOT included
-    }
-  });
-
-  // Fallback: if no question at nextDiff, try any difficulty
-  const finalNextQuestion = nextQuestion ?? await prisma.question.findFirst({
-    where: {
-      domain: existingSession.domain,
-      role: existingSession.role,
       id: { notIn: newAnsweredIds },
-    },
-    select: {
-      id: true,
-      text: true,
-      code: true,
-      type: true,
-      options: true,
-      skillId: true,
-      level: true,
-    }
-  });
+    };
 
-  return Response.json({
-    correct: isCorrect,
-    correctAnswer: question!.correctAnswer,  // safe — they already answered
-    points,
-    score: existingSession.score + points,
-    progress: { current: newTotal + 1, total: 10 },
-    isComplete: false,
-    nextQuestion: finalNextQuestion,
-  });
+
+    const targetCount = await prisma.question.count({ where: targetWhere });
+
+    let finalNextQuestion = null;
+
+    if (targetCount > 0) {
+     
+      const randomSkip = Math.floor(Math.random() * targetCount);
+      
+   
+      finalNextQuestion = await prisma.question.findFirst({
+        where: targetWhere,
+        skip: randomSkip,
+        select: {
+          id: true,
+          text: true,
+          code: true,
+          type: true,
+          options: true,
+          skillId: true,
+          level: true,
+        },
+      });
+    }
+
+    // 5. Fallback: if no question at nextDiff, grab a random one from ANY difficulty
+    if (!finalNextQuestion) {
+      const fallbackWhere = {
+        domain: existingSession.domain,
+        role: existingSession.role,
+        id: { notIn: newAnsweredIds },
+      };
+
+      const fallbackCount = await prisma.question.count({ where: fallbackWhere });
+
+      if (fallbackCount > 0) {
+        const fallbackSkip = Math.floor(Math.random() * fallbackCount);
+        
+        finalNextQuestion = await prisma.question.findFirst({
+          where: fallbackWhere,
+          skip: fallbackSkip,
+          select: {
+            id: true,
+            text: true,
+            code: true,
+            type: true,
+            options: true,
+            skillId: true,
+            level: true,
+          },
+        });
+      }
+    }
+
+    return NextResponse.json({
+      correct: isCorrect,
+      correctAnswer: question.correctAnswer, 
+      points,
+      score: existingSession.score + points,
+      progress: { current: newTotal + 1, total: 10 },
+      isComplete: false,
+      nextQuestion: finalNextQuestion,
+    });
 
   } catch (error) {
     console.log("error checking answer...", error);
