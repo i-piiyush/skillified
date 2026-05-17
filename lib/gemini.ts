@@ -24,6 +24,99 @@ const hashQuestion = (text: string, code?: string | null) => {
   return base.toLowerCase().replace(/\s+/g, " ").trim();
 };
 
+const DOMAIN_STACKS: Record<string, string[]> = {
+  "Web Development": [
+    "mongodb + express js + react js + node js",
+    "postgresql + next js + node js",
+    "postgresql + express js + angular + node js",
+    "mysql + laravel + vue js",
+    "mongodb + next js + node js",
+    "python + django + postgresql",
+  ],
+  "Mobile Development": [
+    "react native + expo + firebase",
+    "flutter + dart + firebase",
+    "swift + xcode + core data",
+    "kotlin + android studio + firebase",
+    "react native + expo + supabase",
+  ],
+  "Data Science": [
+    "python + pandas + numpy + scikit-learn",
+    "python + pandas + numpy + matplotlib",
+    "python + sql + tableau",
+    "r + tidyverse + ggplot2",
+    "python + spark + hadoop",
+  ],
+  "Machine Learning": [
+    "python + pytorch + hugging face",
+    "python + tensorflow + keras",
+    "python + scikit-learn + mlflow",
+    "python + pytorch + fast ai",
+    "python + xgboost + scikit-learn",
+  ],
+  "DevOps": [
+    "docker + kubernetes + jenkins",
+    "aws + terraform + ansible",
+    "github actions + docker + aws",
+    "gitlab ci + docker + kubernetes",
+    "azure devops + terraform + docker",
+  ],
+  "Cybersecurity": [
+    "python + kali linux + metasploit",
+    "python + wireshark + burp suite",
+    "python + nmap + nessus",
+    "bash + kali linux + open vas",
+  ],
+  "Blockchain": [
+    "solidity + ethereum + hardhat",
+    "solidity + ethereum + foundry",
+    "rust + solana + anchor",
+    "typescript + ethers js + next js",
+  ],
+  "Game Development": [
+    "unity + c sharp",
+    "unreal engine + c++",
+    "godot + gdscript",
+    "pygame + python",
+    "phaser js + typescript",
+  ],
+  "Cloud Computing": [
+    "aws + terraform + docker + kubernetes",
+    "google cloud + kubernetes + terraform",
+    "azure + bicep + docker + kubernetes",
+    "aws + serverless framework + lambda",
+  ],
+  "System Design": [
+    "golang + postgresql + redis + kafka",
+    "java + spring boot + postgresql + kafka",
+    "rust + postgresql + redis",
+    "node js + postgresql + redis + rabbitmq",
+    "python + fast api + postgresql + celery",
+  ],
+};
+
+export const fetchStack = (domain: string): { stack: string[] } => {
+  const stacks = DOMAIN_STACKS[domain];
+
+  if (stacks) {
+    return { stack: stacks };
+  }
+
+  // partial match fallback e.g. "web dev" → "Web Development"
+  const partialMatch = Object.keys(DOMAIN_STACKS).find(
+    (key) =>
+      key.toLowerCase().includes(domain.toLowerCase()) ||
+      domain.toLowerCase().includes(key.toLowerCase()),
+  );
+
+  if (partialMatch) {
+    return { stack: DOMAIN_STACKS[partialMatch] };
+  }
+
+  console.warn(`Domain "${domain}" not found in DOMAIN_STACKS`);
+  return { stack: [] };
+};
+
 const generateTestPrompt = (
   domain: string,
   stack: string[],
@@ -73,23 +166,27 @@ ${existingContext}
 ${difficultyGuidance[difficulty]}
 
 QUESTION TYPES (split evenly):
-- MCQ: 4 short plain-text options, exactly 1 correct. Distribute correct answer across A/B/C/D.
-- OUTPUT: ONLY "What does this code print/return?" where answer is a single scalar a user can type exactly.
+- MCQ: 4 short plain-text options, exactly 1 correct.
+- OUTPUT: ONLY "What does this code print/return?" where answer is one word or value a user can type exactly.
 
-STRICT OUTPUT RULES:
+MCQ RULES (CRITICAL):
+- "options" array must contain full text of each option — NEVER letters like "A", "B", "C", "D"
+- "correctAnswer" MUST be the exact full text of one of the 4 options, copied character-for-character
+- NEVER use "A", "B", "C", "D" as correctAnswer — always the full option text
+- Correct: options: ["15", "undefined", "NaN", "ReferenceError"], correctAnswer: "NaN"
+- Wrong:   options: ["15", "undefined", "NaN", "ReferenceError"], correctAnswer: "C"
+
+OUTPUT RULES (CRITICAL):
+- correctAnswer must be a SINGLE word or value — NO newlines, NO \n, NO multi-line
+- If output spans multiple lines → make it MCQ instead
+- Only use output type for: "42", "true", "NaN", "TypeError", "undefined", "hello"
 - Code MUST be self-contained and directly executable
-- correctAnswer MUST be exactly what console.log/return prints — e.g. "42", "true", "null", "TypeError"
-- If answer requires more than 10 characters to type → make it MCQ instead
-- Scenario questions ("what happens if X fails") → always MCQ
-- Conceptual questions ("what is the expected state") → always MCQ
-- When in doubt → MCQ
+- Scenario/conceptual questions → always MCQ, never output
+- When in doubt → MC
 
 SKILL ID: kebab-case e.g. "js-closures", "react-hooks", "node-event-loop"
 
-CODE FIELD RULES:
-- Escape newlines as \\n, escape double quotes as \\"
-- Keep code under 15 lines to avoid truncation
-- If no code needed: use empty string ""
+
 
 RESPONSE — valid JSON only, no markdown, no backticks:
 {
@@ -280,62 +377,3 @@ export const fetchTest = async (
   return allQuestions;
 };
 
-export const fetchStack = async (domain: string) => {
-  try {
-    const prompt = `You are a technology advisor for developers learning new domains.
-
-TASK: Suggest the most popular and relevant tech stacks for "${domain}" in ${new Date().getFullYear()}.
-
-GUIDELINES:
-- Return as many as genuinely exist (minimum 1, maximum 6)
-- Do NOT force 6 if fewer are relevant — quality over quantity
-- If the domain has fewer distinct stacks (like Cyber Security), return only the real ones
-- Each stack should be practical and commonly used in industry
-
-STRICT FORMAT RULES (critical):
-- Always use full technology names — NO abbreviations or acronyms
-- NEVER use: MERN, MEAN, LAMP, JAM, MEVN, or any other acronym
-- Always use lowercase
-- Separate technologies with " + "
-- Examples of correct format:
-  ✓ "mongodb + express js + react js + node js"
-  ✓ "mongodb + next js + node js"
-  ✓ "postgresql + express js + angular + node js"
-  ✓ "python + django + postgresql"
-  ✓ "python + fast api + mongodb"
-
-Respond with valid JSON only:
-{ "stack": ["stack 1", "stack 2", ...] }
-
-Now suggest relevant stacks for: "${domain}"`;
-
-    const response = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [
-        {
-          role: "system",
-          content: "You are a technology advisor. Always respond with valid JSON only. No markdown, no backticks. Always use full lowercase technology names separated by ' + '. Never use acronyms like MERN, MEAN, LAMP.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.5,
-      max_tokens: 500,
-      response_format: { type: "json_object" },
-    });
-
-    const text = response.choices[0]?.message?.content;
-    if (!text) throw new Error("Empty response");
-
-    const parsed = JSON.parse(text);
-
-    // Safety net — normalize on our side too in case model slips
-    const normalized = parsed.stack.map((s: string) =>
-      s.toLowerCase().trim()
-    );
-
-    return { stack: normalized };
-  } catch (err) {
-    console.log("error generating stack... ", err);
-    return { stack: [] };
-  }
-};

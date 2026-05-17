@@ -8,9 +8,9 @@ import { useRouter } from "next/navigation";
 // Constants
 const ROLES = [
   { label: "Internship", sub: "3–6 month stint" },
-  { label: "SDE – 1", sub: "0–2 years experience" },
-  { label: "SDE – 2", sub: "2–5 years experience" },
-  { label: "SDE – 3 / Senior", sub: "5+ years experience" },
+  { label: "SDE1", sub: "0–2 years experience" },
+  { label: "SDE2", sub: "2–5 years experience" },
+  { label: "SDE3", sub: "5+ years experience" },
 ];
 
 const DOMAINS = [

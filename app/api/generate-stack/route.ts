@@ -16,7 +16,7 @@ export const POST = async (req: Request) => {
   }
 
   try {
-    const stack = await fetchStack(domain);
+    const stack = fetchStack(domain);
 
     return NextResponse.json(
       {

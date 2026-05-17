@@ -1,11 +1,18 @@
+import { analyseResult } from "@/lib/analyses/analyseResult";
+import { getWeakTopics } from "@/lib/analyses/getWeakTopics";
+import { Role, ROLE_CRITERIA } from "@/lib/analyses/roleCriteria";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
   const body = await req.json();
-  const { questionId, correctAnswer, sessionId } = body;
+  const { questionId, userAnswer, sessionId } = body;
 
-  if (!questionId || !correctAnswer || !sessionId) {
+  console.log(
+    `question id ${questionId} correct answer ${userAnswer} session id ${sessionId}`,
+  );
+
+  if (!questionId || !userAnswer || !sessionId) {
     return NextResponse.json(
       {
         success: false,
@@ -43,10 +50,21 @@ export const POST = async (req: Request) => {
         { status: 400 },
       );
     }
+    const normalize = (s: string) =>
+      s
+        .trim()
+        .toLowerCase()
+        .replace(/\\n/g, " ")
+        .replace(/\n/g, " ")
+        .replace(/\s+/g, " ");
 
     const isCorrect =
-      question.correctAnswer.trim().toLowerCase() ===
-      correctAnswer.trim().toLowerCase();
+      normalize(question.correctAnswer) === normalize(userAnswer);
+
+    console.log(
+      "normalized correct answer  ",
+      normalize(question.correctAnswer),
+    );
 
     let points = 0;
     if (isCorrect) {
@@ -71,7 +89,7 @@ export const POST = async (req: Request) => {
       data: {
         sessionId,
         questionId,
-        userAnswer: correctAnswer,
+        userAnswer: userAnswer,
         isCorrect,
         difficulty: existingSession.currentDiff,
         points,
@@ -79,11 +97,13 @@ export const POST = async (req: Request) => {
     });
 
     console.log({ nextDiff, isCorrect, correctAnswer: question.correctAnswer });
+
+    const finalScore = existingSession.score + points;
     // Update session
     await prisma.testSession.update({
       where: { id: sessionId },
       data: {
-        score: existingSession.score + points,
+        score: finalScore,
         currentDiff: nextDiff,
         totalAnswered: newTotal,
         answeredIds: newAnsweredIds,
@@ -93,18 +113,50 @@ export const POST = async (req: Request) => {
 
     // If test complete — no next question
     if (isComplete) {
-      return Response.json({
+      const maxScore = 30;
+      const percentage = Math.round((finalScore / maxScore) * 100);
+
+      const allAnswers = await prisma.testAnswer.findMany({
+        where: { sessionId },
+        include: { question: { select: { skillId: true } } },
+      });
+
+      const answerForAnalyses = allAnswers.map((a) => ({
+        isCorrect: a.isCorrect,
+        difficulty: a.difficulty,
+        skillId: a.question.skillId,
+      }));
+
+      const weakTopics = getWeakTopics(answerForAnalyses);
+      const analysis = analyseResult(
+        percentage,
+        existingSession.role as Role,
+        weakTopics,
+      );
+
+      
+
+      await prisma.user.update({
+        where: { id: existingSession.userId },
+        data: {
+          latestScore: percentage,
+          weakTopics: analysis.weakTopics,
+          roleReadiness: analysis.roleReadiness,
+          lastTested: new Date(),
+        },
+      });
+
+      return NextResponse.json({
         correct: isCorrect,
         correctAnswer: question.correctAnswer,
         points,
-        score: existingSession.score + points,
-        progress: { current: 10, total: 10 },
+        score: finalScore,
         isComplete: true,
         nextQuestion: null,
+        analysis,
       });
     }
 
- 
     const targetWhere = {
       domain: existingSession.domain,
       role: existingSession.role,
@@ -112,16 +164,13 @@ export const POST = async (req: Request) => {
       id: { notIn: newAnsweredIds },
     };
 
-
     const targetCount = await prisma.question.count({ where: targetWhere });
 
     let finalNextQuestion = null;
 
     if (targetCount > 0) {
-     
       const randomSkip = Math.floor(Math.random() * targetCount);
-      
-   
+
       finalNextQuestion = await prisma.question.findFirst({
         where: targetWhere,
         skip: randomSkip,
@@ -145,11 +194,13 @@ export const POST = async (req: Request) => {
         id: { notIn: newAnsweredIds },
       };
 
-      const fallbackCount = await prisma.question.count({ where: fallbackWhere });
+      const fallbackCount = await prisma.question.count({
+        where: fallbackWhere,
+      });
 
       if (fallbackCount > 0) {
         const fallbackSkip = Math.floor(Math.random() * fallbackCount);
-        
+
         finalNextQuestion = await prisma.question.findFirst({
           where: fallbackWhere,
           skip: fallbackSkip,
@@ -168,14 +219,13 @@ export const POST = async (req: Request) => {
 
     return NextResponse.json({
       correct: isCorrect,
-      correctAnswer: question.correctAnswer, 
+      correctAnswer: question.correctAnswer,
       points,
       score: existingSession.score + points,
       progress: { current: newTotal + 1, total: 10 },
       isComplete: false,
       nextQuestion: finalNextQuestion,
     });
-
   } catch (error) {
     console.log("error checking answer...", error);
     return NextResponse.json(

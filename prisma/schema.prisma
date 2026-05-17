@@ -7,16 +7,31 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
+enum RoleReadiness {
+  ready
+  not_ready
+  borderline
+}
+enum Role {
+  Internship
+  SDE1
+  SDE2
+  SDE3
+}
 model User {
-  id        String   @id @default(uuid())
-  level     Int    @default(1)
-  role      String
-  name      String
-  email     String?  @unique
-  domain    String
-  stack     String[]
-  createdAt DateTime @default(now()) @map("created_at")
-   testSessions TestSession[] 
+  id            String         @id @default(uuid())
+  level         Int            @default(1)
+  role          Role
+  name          String
+  email         String?        @unique
+  domain        String
+  stack         String[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  testSessions  TestSession[]
+  latestScore   Int?
+  weakTopics    String[]       @default([])
+  lastTested    DateTime?
+  roleReadiness RoleReadiness?
 
   @@map("users")
 }
@@ -26,33 +41,36 @@ enum TestStatus {
   completed
 }
 
+
+
 model TestSession {
-  id            String       @id @default(uuid())
+  id            String     @id @default(uuid())
   userId        String
-  user          User         @relation(fields: [userId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
   domain        String
   stack         String[]
   role          String
-  currentDiff   Int          @default(1)
-  score         Int          @default(0)
-  totalAnswered Int          @default(0)
-  status        TestStatus   @default(in_progress)
-  answeredIds   String[]     @default([])
-  createdAt     DateTime     @default(now())
+  currentDiff   Int        @default(1)
+  score         Int        @default(0)
+  totalAnswered Int        @default(0)
+  status        TestStatus @default(in_progress)
+  answeredIds   String[]   @default([])
+  createdAt     DateTime   @default(now())
 
-  answers       TestAnswer[]
+  answers TestAnswer[]
 }
 
 model TestAnswer {
-  id         String   @id @default(uuid())
+  id         String      @id @default(uuid())
   sessionId  String
   session    TestSession @relation(fields: [sessionId], references: [id])
   questionId String
   userAnswer String
+  question   Question    @relation(fields: [questionId], references: [id])  // ← add this
   isCorrect  Boolean
   difficulty Int
   points     Int
-  createdAt  DateTime @default(now())
+  createdAt  DateTime    @default(now())
 }
 
 enum QuestionType {
@@ -63,15 +81,15 @@ enum QuestionType {
 model Question {
   id            String       @id @default(uuid())
   domain        String
-  skillId       String       
+  skillId       String
   type          QuestionType
   text          String
   options       String[]
-  correctAnswer String       
+  correctAnswer String
   level         Int
   stack         String[]
   role          String
-  code         String?
+  code          String?
 
- 
+  testAnswers TestAnswer[]
 }
