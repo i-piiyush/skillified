@@ -96,7 +96,7 @@ export const POST = async (req: Request) => {
       },
     });
 
-    console.log({ nextDiff, isCorrect, correctAnswer: question.correctAnswer });
+    console.log({question });
 
     const finalScore = existingSession.score + points;
     // Update session

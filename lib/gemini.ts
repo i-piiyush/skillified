@@ -8,15 +8,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const TARGET_COUNT = 50;
 
 const BATCH_SIZE = {
-  easy:   10,
+  easy: 10,
   medium: 8,
-  hard:   4,
+  hard: 4,
 } as const;
 
 const LEVEL_DISTRIBUTION = [
-  { level: 0, label: "easy" as const,   weight: 0.34 },
+  { level: 0, label: "easy" as const, weight: 0.34 },
   { level: 1, label: "medium" as const, weight: 0.33 },
-  { level: 2, label: "hard" as const,   weight: 0.33 },
+  { level: 2, label: "hard" as const, weight: 0.33 },
 ];
 
 const hashQuestion = (text: string, code?: string | null) => {
@@ -54,20 +54,20 @@ const DOMAIN_STACKS: Record<string, string[]> = {
     "python + pytorch + fast ai",
     "python + xgboost + scikit-learn",
   ],
-  "DevOps": [
+  DevOps: [
     "docker + kubernetes + jenkins",
     "aws + terraform + ansible",
     "github actions + docker + aws",
     "gitlab ci + docker + kubernetes",
     "azure devops + terraform + docker",
   ],
-  "Cybersecurity": [
+  Cybersecurity: [
     "python + kali linux + metasploit",
     "python + wireshark + burp suite",
     "python + nmap + nessus",
     "bash + kali linux + open vas",
   ],
-  "Blockchain": [
+  Blockchain: [
     "solidity + ethereum + hardhat",
     "solidity + ethereum + foundry",
     "rust + solana + anchor",
@@ -117,6 +117,96 @@ export const fetchStack = (domain: string): { stack: string[] } => {
   return { stack: [] };
 };
 
+const ROLE_DEPTH = {
+  Internship: {
+    focus: "fundamental syntax, basic concepts, simple debugging",
+    mcq: "definitions, basic usage, common beginner mistakes, reading simple code",
+    output: "simple expressions, basic type behavior, straightforward control flow",
+    forbidden: "system design, architectural decisions, performance optimization, distributed systems",
+    benchmark: "questions a CS sophomore should answer after reading the official docs once",
+    depthRule: "Ask WHAT — definitions, basic usage, syntax",
+    depthBad: "What does useState do?",
+    depthGood: "What is the correct way to initialize state with a value that requires expensive computation?",
+  },
+  SDE1: {
+    focus: "practical implementation, common patterns, debugging real code",
+    mcq: "how core language features work, common pitfalls, standard library behavior, API contracts",
+    output: "execution order, scope behavior, common gotchas in the language",
+    forbidden: "theoretical CS papers, system design at scale, kernel-level or compiler internals",
+    benchmark: "questions asked in junior developer phone screens at mid-tier product companies",
+    depthRule: "Ask HOW — implementation details, why things behave a certain way, not just what they are",
+    depthBad: "What does the event loop do?",
+    depthGood: "Why does setTimeout(fn, 0) not guarantee immediate execution even when the call stack is empty?",
+  },
+  SDE2: {
+    focus: "production edge cases, performance tradeoffs, system interactions, security",
+    mcq: "memory management, concurrency issues, race conditions, scaling decisions, security vulnerabilities",
+    output: "complex execution order, language-specific runtime behavior, subtle spec-level gotchas",
+    forbidden: "hello world examples, basic syntax, simple definitions a junior knows",
+    benchmark: "questions that appear in onsite rounds at product-based startups",
+    depthRule: "Ask WHY + WHAT IF — edge cases, production consequences, tradeoffs between approaches",
+    depthBad: "What is a memory leak?",
+    depthGood: "A React component subscribes to a WebSocket in useEffect. Under what specific conditions does this cause a memory leak that survives component unmount?",
+  },
+  SDE3: {
+    focus: "runtime internals, architectural tradeoffs, MAANG-level depth, cross-system reasoning",
+    mcq: "runtime engine behavior, memory model internals, distributed systems tradeoffs, compiler/interpreter decisions, performance at scale",
+    output: "subtle spec-level language behavior, runtime optimization effects, memory allocation patterns",
+    forbidden: "ABSOLUTE BAN: anything a junior could answer, basic API questions, simple syntax, definitions — if a bootcamp graduate knows the answer it is DISQUALIFIED",
+    benchmark: "questions that FAIL senior engineers in MAANG onsite rounds — ones that make 5+ year engineers pause and think hard",
+    depthRule: "Ask HOW DOES IT ACTUALLY WORK INSIDE — engine internals, spec-level behavior, architectural consequences",
+    depthBad: "How does useState work under the hood?",
+    depthGood: "React 18 batches setState calls inside setTimeout automatically. Explain the scheduler priority lane mechanism that enables this and why it breaks useSyncExternalStore in concurrent mode.",
+  },
+} as const;
+
+type RoleKey = keyof typeof ROLE_DEPTH;
+
+const normalizeRole = (role: string): RoleKey => {
+  const r = role.toLowerCase().trim();
+  if (r === "internship") return "Internship";
+  if (r === "sde1" || r === "sde-1") return "SDE1";
+  if (r === "sde2" || r === "sde-2") return "SDE2";
+  if (r === "sde3" || r === "sde-3") return "SDE3";
+  return "SDE1";
+};
+
+const DIFFICULTY_BY_ROLE = {
+  easy: {
+    Internship: "Single concept, no tricks — basic syntax and definitions",
+    SDE1:       "How core features behave at runtime — not just what they are",
+    SDE2:       "Real implementation knowledge — requires hands-on experience to answer",
+    SDE3:       "Concepts juniors think they know but senior engineers have precise mental models of — deceptively simple surface, deep correct answer",
+  },
+  medium: {
+    Internship: "Two concepts combined — simple real-world scenario",
+    SDE1:       "Requires understanding execution model, scope, or async behavior",
+    SDE2:       "Production edge cases — unexpected behavior under load or at scale",
+    SDE3:       "Stumps mid-level engineers — requires accurate model of runtime internals",
+  },
+  hard: {
+    Internship: "Tricky but fair — edge case a prepared intern knows after studying",
+    SDE1:       "Questions junior devs consistently get wrong — prototype chain, event loop, closures",
+    SDE2:       "Startup onsite level — performance, security, architectural tradeoffs",
+    SDE3:       "MAANG onsite level — the question that ends interviews. If a senior dev can answer without hesitation it is TOO EASY",
+  },
+} as const;
+
+const DOMAIN_CONTEXT: Record<string, string> = {
+  "web development":    "browser runtime, HTTP internals, DOM APIs, frontend framework internals, REST/GraphQL behavior",
+  "mobile development": "app lifecycle internals, memory constraints, UI thread blocking, platform API behavior, offline-first patterns",
+  "data science":       "data pipeline edge cases, model behavior under distribution shift, statistical gotchas, library internals",
+  "machine learning":   "training dynamics, gradient flow, model architecture tradeoffs, inference optimization, numerical stability",
+  "devops":             "container runtime behavior, networking internals, CI/CD failure modes, infrastructure-as-code edge cases",
+  "cybersecurity":      "attack vectors, cryptographic protocol behavior, secure coding patterns, vulnerability root causes",
+  "blockchain":         "consensus mechanism tradeoffs, smart contract execution model, gas optimization, cryptographic primitive behavior",
+  "game development":   "render loop internals, physics simulation edge cases, memory pooling, determinism in multiplayer",
+  "cloud computing":    "distributed system failure modes, CAP theorem in practice, service limit behavior, eventual consistency edge cases",
+  "system design":      "scalability bottlenecks, database internals, caching invalidation, consistency model tradeoffs",
+};
+
+
+
 const generateTestPrompt = (
   domain: string,
   stack: string[],
@@ -126,109 +216,110 @@ const generateTestPrompt = (
   existingQuestions: Array<{ text: string; code?: string | null }>,
 ): string => {
   const stackLabel = stack.join(", ");
-
-  const existingContext =
-    existingQuestions.length > 0
-      ? `
-ALREADY GENERATED (do NOT repeat or rephrase these):
-${existingQuestions
-  .slice(-10)
-  .map((q, i) => `${i + 1}. "${q.text.slice(0, 60)}"`)
-  .join("\n")}`
-      : "";
-
-  const difficultyGuidance = {
-    easy: `
-EASY LEVEL:
-- Fundamental concepts, basic syntax, definitions
-- Single concept per question, no edge cases
-- Test foundational understanding`,
-    medium: `
-MEDIUM LEVEL:
-- Combine 2-3 concepts, real-world scenarios
-- Require understanding of interactions & trade-offs
-- Test application and integration of concepts`,
-    hard: `
-HARD LEVEL:
-- Edge cases, optimization, architectural decisions
-- Production-level scenarios, debugging questions
-- Test mastery and real-world problem-solving
-- Keep code snippets under 15 lines — test concept depth not code length`,
-  };
-
+  const roleKey = normalizeRole(role);
+  const questionTypeSplit = roleKey === "SDE3" || roleKey === "SDE2"
+  ? "70% MCQ, 30% OUTPUT"
+  : "50% MCQ, 50% OUTPUT";
+  const roleProfile = ROLE_DEPTH[roleKey];
   const level = difficulty === "easy" ? 0 : difficulty === "medium" ? 1 : 2;
 
-  return `You are a technical interviewer for ${domain} (${stackLabel}) creating questions for a ${role} position.
+  const domainKey = domain.toLowerCase().trim();
+  const domainContext = DOMAIN_CONTEXT[domainKey]
+    ?? `core internals, runtime behavior, production patterns in ${domain}`;
 
-Generate EXACTLY ${neededCount} ${difficulty.toUpperCase()} questions. DO NOT STOP EARLY.
+  const thisLevelInstruction = DIFFICULTY_BY_ROLE[difficulty][roleKey];
+
+  const existingContext = existingQuestions.length > 0
+    ? `ALREADY GENERATED — do NOT repeat or rephrase:\n${existingQuestions
+        .slice(-8)
+        .map((q, i) => `${i + 1}. "${q.text.slice(0, 55)}"`)
+        .join("\n")}`
+    : "";
+
+  return `You are a brutal technical interviewer at a MAANG company screening ${role} candidates for ${domain} using ${stackLabel}.
+
+ROLE: ${roleKey} | DIFFICULTY: ${difficulty.toUpperCase()} | DOMAIN: ${domain}
+
+═══ ROLE PROFILE ═══
+Focus: ${roleProfile.focus}
+MCQ topics: ${roleProfile.mcq}
+Output topics: ${roleProfile.output}
+FORBIDDEN: ${roleProfile.forbidden}
+Benchmark: ${roleProfile.benchmark}
+
+═══ DEPTH RULE — NON-NEGOTIABLE ═══
+${roleProfile.depthRule}
+
+❌ THIS IS TOO SHALLOW (instant disqualify): "${roleProfile.depthBad}"
+✅ THIS IS THE MINIMUM BAR: "${roleProfile.depthGood}"
+
+Every question MUST be closer to ✅ than ❌.
+Ask yourself: "Would a ${roleKey} candidate already know this without thinking?"
+If YES → discard and write a harder one.
+
+═══ THIS BATCH ═══
+${thisLevelInstruction}
+Stack-specific: target ${stackLabel} internals — not generic programming.
+Domain layer: ${domainContext}
+
 ${existingContext}
 
-${difficultyGuidance[difficulty]}
-
-QUESTION TYPES (split evenly):
-- MCQ: 4 short plain-text options, exactly 1 correct.
-- OUTPUT: ONLY "What does this code print/return?" where answer is one word or value a user can type exactly.
-
-MCQ RULES (CRITICAL):
-- "options" array must contain full text of each option — NEVER letters like "A", "B", "C", "D"
-- "correctAnswer" MUST be the exact full text of one of the 4 options, copied character-for-character
-- NEVER use "A", "B", "C", "D" as correctAnswer — always the full option text
-- Correct: options: ["15", "undefined", "NaN", "ReferenceError"], correctAnswer: "NaN"
-- Wrong:   options: ["15", "undefined", "NaN", "ReferenceError"], correctAnswer: "C"
-
-OUTPUT RULES (CRITICAL):
-- correctAnswer must be a SINGLE word or value — NO newlines, NO \n, NO multi-line
-- If output spans multiple lines → make it MCQ instead
-- Only use output type for: "42", "true", "NaN", "TypeError", "undefined", "hello"
-- Code MUST be self-contained and directly executable
-- Scenario/conceptual questions → always MCQ, never output
-- When in doubt → MC
-
-SKILL ID: kebab-case e.g. "js-closures", "react-hooks", "node-event-loop"
+═══ QUESTION TYPES ═══
+QUESTION TYPES (${questionTypeSplit}):
+MCQ: scenario-based, requires deep mental model
+OUTPUT: ONLY pure JavaScript/language execution — NO JSX, 
+        NO server startup code, NO file system operations,
+        NO external dependencies
+        ONLY: closures, prototype chain, event loop microtask ordering,
+        type coercion, async/await execution order
 
 
+═══ QUALITY GATES (check every question) ═══
+□ Would a ${roleKey} interviewer at Google/Meta actually ask this?
+□ Is it specific to ${stackLabel} — not a generic CS question?
+□ Correct answer is unambiguous — only one defensible answer?
+□ MCQ wrong options are plausible — someone who almost knows could pick them?
+□ OUTPUT answer is a single typeable value?
+□ Unique — not a rephrasing of existing questions?
+□ ${roleKey === "SDE3" ? "Would a 5-year senior engineer need to think before answering? If NO → too easy → discard." : `Matches ${roleKey} depth — not too junior, not too senior?`}
 
-RESPONSE — valid JSON only, no markdown, no backticks:
-{
-  "questions": [
-    {
-      "skillId": "topic-slug",
-      "type": "mcq",
-      "level": ${level},
-      "text": "Question text here",
-      "code": "",
-      "options": ["wrong", "wrong", "wrong", "correct"],
-      "correctAnswer": "correct"
-    },
-    {
-      "skillId": "topic-slug",
-      "type": "output",
-      "level": ${level},
-      "text": "What is the output of this code?",
-      "code": "console.log(1 + '2');",
-      "options": [],
-      "correctAnswer": "12"
-    }
-  ]
-}
+CODE: \\n for newlines, \\" for quotes, max 12 lines, "" if no code
+skillId: kebab-case slug e.g. "v8-hidden-classes", "react-fiber-reconciler", "mongo-write-concern", "node-libuv-threadpool"
 
-Generate EXACTLY ${neededCount} questions now:`;
+BANNED QUESTION STARTERS (instant disqualify):
+✗ "What is the purpose of..."
+✗ "What does X do?"
+✗ "What is X?"
+✗ "Which method..."
+✗ "What is the value of..." (for trivial code)
+✗ "What is the maximum number of..."
+
+REQUIRED QUESTION PATTERNS (use these):
+✓ "Given [specific scenario], what happens when..."
+✓ "Why does [specific behavior] occur when..."
+✓ "A production system exhibits [symptom]. What is the root cause..."
+✓ "What is the output of [non-obvious code that requires mental model]..."
+✓ "[Two approaches] — under what conditions does [A] outperform [B] and why..."
+✓ "Your team notices [production issue]. Trace the exact execution path..."
+
+JSON only, no markdown:
+{"questions":[{"skillId":"slug","type":"mcq","level":${level},"text":"?","code":"","options":["plausible wrong","plausible wrong","plausible wrong","correct"],"correctAnswer":"correct"},{"skillId":"slug","type":"output","level":${level},"text":"What is the output?","code":"runnable code here","options":[],"correctAnswer":"value"}]}
+
+Generate EXACTLY ${neededCount} questions now. Apply all quality gates. If a question fails any gate — replace it before outputting.`;
 };
 
-async function callLLM(
-  prompt: string,
-  neededNow: number,
-): Promise<any[]> {
+async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
   const MAX_RETRIES = 3;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const response = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
           {
             role: "system",
-            content: "You are a technical question generator. Always respond with valid JSON only. No markdown, no backticks, no explanation.",
+            content:
+              "You are a technical question generator. Always respond with valid JSON only. No markdown, no backticks, no explanation.",
           },
           {
             role: "user",
@@ -240,20 +331,30 @@ async function callLLM(
         response_format: { type: "json_object" },
       });
 
+      const usage = response.usage;
+
+      const promptTokens = usage?.prompt_tokens || 0;
+      const completionTokens = usage?.completion_tokens || 0;
+      const totalTokens = usage?.total_tokens || 0;
+
+      // 3. Log it or Save it to your Database (Prisma/PostgreSQL)
+      console.log(
+        `[Groq Log] Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}`,
+      );
+
       const text = response.choices[0]?.message?.content;
       if (!text) throw new Error("Empty response");
 
       const parsed = JSON.parse(text);
       return parsed.questions ?? [];
-
     } catch (err: any) {
-      const is429 =
-        err?.status === 429 ||
-        err?.message?.includes("rate_limit");
+      const is429 = err?.status === 429 || err?.message?.includes("rate_limit");
 
       if (is429) {
         const wait = 5000 * Math.pow(2, attempt - 1);
-        console.warn(`⏳ Rate limited (attempt ${attempt}). Waiting ${wait / 1000}s...`);
+        console.warn(
+          `⏳ Rate limited (attempt ${attempt}). Waiting ${wait / 1000}s...`,
+        );
         await sleep(wait);
         continue;
       }
@@ -298,14 +399,18 @@ export const fetchTest = async (
     let levelCount = 0;
     let emptyBatchStreak = 0;
 
-    console.log(`\n📚 [${label.toUpperCase()}] Target: ${levelTarget} questions`);
+    console.log(
+      `\n📚 [${label.toUpperCase()}] Target: ${levelTarget} questions`,
+    );
 
     while (levelCount < levelTarget) {
       const remaining = levelTarget - levelCount;
       const batchSize = BATCH_SIZE[label];
       const neededNow = Math.min(batchSize, remaining);
 
-      console.log(`  → Requesting batch of ${neededNow} (${levelCount}/${levelTarget} done)`);
+      console.log(
+        `  → Requesting batch of ${neededNow} (${levelCount}/${levelTarget} done)`,
+      );
 
       const prompt = generateTestPrompt(
         domain,
@@ -322,7 +427,9 @@ export const fetchTest = async (
         emptyBatchStreak++;
         console.warn(`  ⚠️ Empty batch (streak: ${emptyBatchStreak})`);
         if (emptyBatchStreak >= 3) {
-          console.error(`  ❌ 3 empty batches in a row for [${label}] — moving on`);
+          console.error(
+            `  ❌ 3 empty batches in a row for [${label}] — moving on`,
+          );
           break;
         }
         await sleep(1000);
@@ -364,7 +471,9 @@ export const fetchTest = async (
         });
         allQuestions.push(...validBatch);
         onProgress?.(allQuestions.length, TARGET_COUNT);
-        console.log(`  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`);
+        console.log(
+          `  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`,
+        );
       }
 
       if (levelCount < levelTarget) {
@@ -376,4 +485,3 @@ export const fetchTest = async (
   console.log(`\n✅ Done. Generated ${allQuestions.length} questions total.`);
   return allQuestions;
 };
-
