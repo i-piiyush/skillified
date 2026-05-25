@@ -1,10 +1,103 @@
-datasource db {
-  provider = "postgresql"
-}
 
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String         @id @default(uuid())
+  level          Int            @default(1)
+  name           String?
+  email          String?        @unique
+  domain         String?
+  stack          String[]
+  createdAt      DateTime       @default(now()) @map("created_at")
+  lastTested     DateTime?
+  latestScore    Int?
+  roleReadiness  RoleReadiness?
+  role           Role?
+  weakTopicNames String[]       @default([])
+  testSessions   TestSession[]
+  weakTopics     WeakTopic[]
+
+  emailVerified Boolean   @default(false)
+  image         String?
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+model TestSession {
+  id            String       @id @default(uuid())
+  userId        String
+  domain        String
+  stack         String[]
+  role          String
+  currentDiff   Int          @default(1)
+  score         Int          @default(0)
+  totalAnswered Int          @default(0)
+  status        TestStatus   @default(in_progress)
+  answeredIds   String[]     @default([])
+  createdAt     DateTime     @default(now())
+  answers       TestAnswer[]
+  user          User         @relation(fields: [userId], references: [id])
+}
+
+model TestAnswer {
+  id         String      @id @default(uuid())
+  sessionId  String
+  questionId String
+  userAnswer String
+  isCorrect  Boolean
+  difficulty Int
+  points     Int
+  createdAt  DateTime    @default(now())
+  question   Question    @relation(fields: [questionId], references: [id])
+  session    TestSession @relation(fields: [sessionId], references: [id])
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  domain        String
+  type          QuestionType
+  text          String
+  level         Int
+  skillId       String
+  options       String[]
+  code          String?
+  correctAnswer String
+  role          String
+  stack         String[]
+  testAnswers   TestAnswer[]
+}
+
+model WeakTopic {
+  id                    String       @id @default(uuid())
+  topic                 String
+  whyYouNeedToStudyThis String
+  createdAt             DateTime     @default(now())
+  userId                String
+  topResource           TopResource?
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TopResource {
+  id          String    @id @default(uuid())
+  type        String
+  title       String
+  url         String
+  source      String
+  whyChosen   String
+  weakTopicId String    @unique
+  weakTopic   WeakTopic @relation(fields: [weakTopicId], references: [id], onDelete: Cascade)
 }
 
 enum RoleReadiness {
@@ -12,28 +105,12 @@ enum RoleReadiness {
   not_ready
   borderline
 }
+
 enum Role {
   Internship
   SDE1
   SDE2
   SDE3
-}
-model User {
-  id            String         @id @default(uuid())
-  level         Int            @default(1)
-  role          Role
-  name          String
-  email         String?        @unique
-  domain        String
-  stack         String[]
-  createdAt     DateTime       @default(now()) @map("created_at")
-  testSessions  TestSession[]
-  latestScore   Int?
-  weakTopics    String[]       @default([])
-  lastTested    DateTime?
-  roleReadiness RoleReadiness?
-
-  @@map("users")
 }
 
 enum TestStatus {
@@ -41,55 +118,55 @@ enum TestStatus {
   completed
 }
 
-
-
-model TestSession {
-  id            String     @id @default(uuid())
-  userId        String
-  user          User       @relation(fields: [userId], references: [id])
-  domain        String
-  stack         String[]
-  role          String
-  currentDiff   Int        @default(1)
-  score         Int        @default(0)
-  totalAnswered Int        @default(0)
-  status        TestStatus @default(in_progress)
-  answeredIds   String[]   @default([])
-  createdAt     DateTime   @default(now())
-
-  answers TestAnswer[]
-}
-
-model TestAnswer {
-  id         String      @id @default(uuid())
-  sessionId  String
-  session    TestSession @relation(fields: [sessionId], references: [id])
-  questionId String
-  userAnswer String
-  question   Question    @relation(fields: [questionId], references: [id])  // ← add this
-  isCorrect  Boolean
-  difficulty Int
-  points     Int
-  createdAt  DateTime    @default(now())
-}
-
 enum QuestionType {
   mcq
   output
 }
 
-model Question {
-  id            String       @id @default(uuid())
-  domain        String
-  skillId       String
-  type          QuestionType
-  text          String
-  options       String[]
-  correctAnswer String
-  level         Int
-  stack         String[]
-  role          String
-  code          String?
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  testAnswers TestAnswer[]
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }

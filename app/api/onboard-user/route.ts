@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 export const POST = async (req: Request) => {
   const body = await req.json();
-  const { name, domain, email, stack, role } = body;
+  const { domain, email, stack, role } = body;
 
-  if (!name || !domain || !email || !stack || !role) {
+  if (!domain || !email || !stack || !role) {
     return NextResponse.json(
       {
         message: "Name, domain, email, role or stack can't be empty",
@@ -17,28 +17,24 @@ export const POST = async (req: Request) => {
   }
 
   const updatedStack = stack.split(" + ");
-  console.log("updated stack:" , updatedStack)
+  console.log("updated stack:", updatedStack);
 
   try {
-    const user = await prisma.user.findUnique({
+    // 🔥 FIX 1: Find Unique check hataya. Seedha existing user ko update kiya.
+    // Agar user nahi mila (frontend ne pehle banaya nahi), toh catch block mein P2025 error aayega.
+    const updatedUser = await prisma.user.update({
       where: {
         email: email,
       },
+      data: {
+        domain: domain,
+        stack: updatedStack,
+        role: role,
+        level: 1,
+      },
     });
 
-    if (!user) {
-      await prisma.user.create({
-        data: {
-          name: name,
-          domain: domain,
-          stack: updatedStack, // Must be an array of strings
-          email: email, // Now optional, you can omit this line entirely
-          role: role,
-          level : 1
-        },
-      });
-    }
-
+    // 🔥 FIX 2: Test generation logic ko bahar nikal diya taaki hamesha chale
     const existingTestQuestions = await prisma.question.findMany({
       where: {
         role: role,
@@ -53,12 +49,14 @@ export const POST = async (req: Request) => {
           message: "existing test found",
           success: true,
           fetchedQuestions: existingTestQuestions,
-          userId : user?.id
+          userId: updatedUser.id, // 🔥 updatedUser ki ID use ki
         },
         { status: 200 },
       );
     }
+
     const testQuestions = await fetchTest(domain, updatedStack, role);
+    
     if (testQuestions.length < 1) {
       return NextResponse.json(
         {
@@ -77,8 +75,21 @@ export const POST = async (req: Request) => {
       },
       { status: 201 },
     );
-  } catch (error) {
-    console.log("error creacting user or generating test ", error);
+
+  } catch (error: any) {
+    console.log("error creating user or generating test ", error);
+    
+    // Agar by chance user database mein nahi mila
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        {
+          message: "User not found. Please register first.",
+          success: false,
+        },
+        { status: 404 },
+      );
+    }
+
     return NextResponse.json(
       {
         message: "Server Error",
