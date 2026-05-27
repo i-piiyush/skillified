@@ -65,12 +65,10 @@ model TestAnswer {
 model Question {
   id            String       @id @default(uuid())
   domain        String
-  type          QuestionType
   text          String
   level         Int
   skillId       String
   options       String[]
-  code          String?
   correctAnswer String
   role          String
   stack         String[]
@@ -118,10 +116,6 @@ enum TestStatus {
   completed
 }
 
-enum QuestionType {
-  mcq
-  output
-}
 
 model Session {
   id        String   @id

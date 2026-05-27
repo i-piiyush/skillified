@@ -57,8 +57,6 @@ export const POST = async (req: Request) => {
       select: {
         id: true,
         text: true,
-        code: true,
-        type: true,
         options: true,
         skillId: true,
         level: true,

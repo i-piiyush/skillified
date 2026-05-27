@@ -2,16 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, Code2, ArrowRight, RotateCcw, Loader2 } from "lucide-react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { prism } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CheckCircle2, XCircle, ArrowRight, RotateCcw, Loader2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { Question } from "@/types/frontendQuestions";
 
 export default function QuizPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState("");
-  const [outputInput, setOutputInput] = useState("");
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [sessionId, setSessionId] = useState<string>("");
@@ -27,7 +24,6 @@ export default function QuizPage() {
   useEffect(() => {
     const createSession = async () => {
       try {
-        
         const res = await axios.post("/api/test/start");
 
         if (res.data.question) {
@@ -42,7 +38,6 @@ export default function QuizPage() {
       }
     };
 
-    
     createSession();
   }, []);
 
@@ -52,31 +47,29 @@ export default function QuizPage() {
   const submitAnswer = async (userAnswer: string) => {
     if (isAnswered || isSubmitting || !currentQuestion) return;
 
-    console.log(currentQuestion.id,userAnswer,sessionId)
+    console.log(currentQuestion.id, userAnswer, sessionId);
 
     setIsSubmitting(true);
     setSelectedAnswer(userAnswer);
 
     try {
-      // ✅ correct route + correct field name (was "correctAnswer", should be "userAnswer")
       const res = await axios.post("/api/test/answer", {
         sessionId,
         questionId: currentQuestion.id,
-        userAnswer,          // ← fixed
+        userAnswer, 
       });
 
       const data = res.data;
-      
 
-      setIsCorrectAnswer(data.correct);          // ← boolean from backend
+      setIsCorrectAnswer(data.correct); 
       setBackendCorrectAnswer(data.correctAnswer);
       setScore(data.score);
       setNextQuestionData(data.nextQuestion);
       setIsAnswered(true);
       setAnalysisResult(data.analysis); 
-      console.log(data.analysis)
+      console.log(data.analysis);
     } catch (error) {
-      const err = error as AxiosError
+      const err = error as AxiosError;
       console.error("Error submitting answer:", err.response);
       setSelectedAnswer("");
     } finally {
@@ -88,12 +81,6 @@ export default function QuizPage() {
     if (!isAnswered && !isSubmitting) submitAnswer(option);
   };
 
-  const handleSubmitOutput = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!outputInput.trim()) return;
-    submitAnswer(outputInput.trim());
-  };
-
   const handleNext = () => {
     if (nextQuestionData) {
       setQuestions((prev) => [...prev, nextQuestionData]);
@@ -101,7 +88,6 @@ export default function QuizPage() {
     setCurrentIndex((prev) => prev + 1);
     setIsAnswered(false);
     setSelectedAnswer("");
-    setOutputInput("");
     setBackendCorrectAnswer(null);
     setNextQuestionData(null);
     setIsCorrectAnswer(null);
@@ -119,8 +105,6 @@ export default function QuizPage() {
   }
 
   if (isFinished) {
-    
-
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4F0EB] p-4">
         <motion.div
@@ -130,8 +114,8 @@ export default function QuizPage() {
         >
           <h2 className="text-4xl font-semibold mb-2 text-[#2A2927]">Test Complete</h2>
           <p className="text-[#9A958E] mb-8 text-sm">Here's how you performed</p>
-          <div className="text-6xl font-mono font-bold text-[#D27B53] mb-1">{analysisResult.percentage || "percentage not available"}%</div>
-          <p className="text-[#9A958E] text-sm font-mono mb-8">{analysisResult.verdict || "verdict not available" }</p>
+          <div className="text-6xl font-mono font-bold text-[#D27B53] mb-1">{analysisResult?.percentage || "0"}%</div>
+          <p className="text-[#9A958E] text-sm font-mono mb-8">{analysisResult?.verdict || "verdict not available"}</p>
           <button
             onClick={() => window.location.reload()}
             className="w-full flex items-center justify-center gap-2 bg-[#D27B53] text-white py-3.5 rounded-xl font-medium hover:bg-[#b86642] transition-colors"
@@ -215,99 +199,38 @@ export default function QuizPage() {
                   {question.text}
                 </h3>
 
-                {/* ── OUTPUT question ── */}
-                {question.type === "output" && (
-                  <>
-                    {question.code && (
-                      <div className="rounded-xl overflow-hidden border border-[#E6E2DD] mb-4 relative">
-                        <Code2 className="absolute top-3 right-3 w-4 h-4 text-gray-400 z-10" />
-                        <SyntaxHighlighter
-                          language="javascript"
-                          style={prism}
-                          customStyle={{
-                            margin: 0,
-                            padding: "1.25rem",
-                            background: "#fafaf9",
-                            fontSize: "13px",
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          {question.code}
-                        </SyntaxHighlighter>
-                      </div>
-                    )}
-
-                    {!isAnswered ? (
-                      <form onSubmit={handleSubmitOutput} className="flex gap-3 mt-4">
-                        <input
-                          type="text"
-                          value={outputInput}
-                          onChange={(e) => setOutputInput(e.target.value)}
-                          disabled={isSubmitting}
-                          placeholder='Type the exact output...'
-                          className="grow px-4 py-3 rounded-xl border border-[#E6E2DD] bg-[#F9F8F6] focus:outline-none focus:border-[#D27B53] focus:ring-1 focus:ring-[#D27B53] transition-all font-mono text-sm disabled:opacity-50"
-                        />
-                        <button
-                          type="submit"
-                          disabled={!outputInput.trim() || isSubmitting}
-                          className="bg-[#D27B53] text-white px-6 py-3 rounded-xl disabled:opacity-50 hover:bg-[#b86642] transition-colors min-w-[90px] flex items-center justify-center"
-                        >
-                          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
-                        </button>
-                      </form>
-                    ) : (
-                      // ✅ uses isCorrectAnswer boolean from backend (not string compare)
-                      <div className={`mt-4 p-4 rounded-xl flex items-start gap-3 border ${isCorrectAnswer ? "bg-[#EEF4EF] border-[#CDE0D2]" : "bg-[#FDF3F3] border-[#F2D6D6]"}`}>
-                        {isCorrectAnswer
-                          ? <CheckCircle2 className="w-5 h-5 text-[#2E6B3E] shrink-0 mt-0.5" />
-                          : <XCircle className="w-5 h-5 text-[#9A2E2E] shrink-0 mt-0.5" />
-                        }
-                        <div className="font-sans text-sm">
-                          <p className="text-gray-700">Your answer: <span className="font-semibold text-gray-900">{selectedAnswer}</span></p>
-                          {!isCorrectAnswer && backendCorrectAnswer && (
-                            <p className="text-gray-700 mt-1">Correct answer: <span className="font-semibold text-[#2E6B3E]">{backendCorrectAnswer}</span></p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
                 {/* ── MCQ question ── */}
-                {question.type === "mcq" && (
-                  <div className="flex flex-col gap-3 font-sans">
-                    {question.options?.map((option, i) => {
-                      const isSelected = selectedAnswer === option;
-                      // ✅ uses backendCorrectAnswer for comparison
-                      const isRight = backendCorrectAnswer !== null &&
-                        option.trim().toLowerCase() === backendCorrectAnswer.trim().toLowerCase();
+                <div className="flex flex-col gap-3 font-sans">
+                  {question.options?.map((option, i) => {
+                    const isSelected = selectedAnswer === option;
+                    const isRight = backendCorrectAnswer !== null &&
+                      option.trim().toLowerCase() === backendCorrectAnswer.trim().toLowerCase();
 
-                      let cls = "border-[#E6E2DD] hover:border-[#D27B53] hover:bg-[#D27B53]/5 text-gray-700 bg-white";
+                    let cls = "border-[#E6E2DD] hover:border-[#D27B53] hover:bg-[#D27B53]/5 text-gray-700 bg-white";
 
-                      if (isAnswered) {
-                        if (isRight) cls = "border-[#4CAF50] bg-[#EEF4EF] text-[#2E6B3E]";
-                        else if (isSelected) cls = "border-[#F44336] bg-[#FDF3F3] text-[#9A2E2E]";
-                        else cls = "border-[#E6E2DD] text-gray-400 opacity-40 bg-[#F9F8F6]";
-                      } else if (isSubmitting && isSelected) {
-                        cls = "border-[#D27B53] bg-[#D27B53]/10 text-[#D27B53]";
-                      }
+                    if (isAnswered) {
+                      if (isRight) cls = "border-[#4CAF50] bg-[#EEF4EF] text-[#2E6B3E]";
+                      else if (isSelected) cls = "border-[#F44336] bg-[#FDF3F3] text-[#9A2E2E]";
+                      else cls = "border-[#E6E2DD] text-gray-400 opacity-40 bg-[#F9F8F6]";
+                    } else if (isSubmitting && isSelected) {
+                      cls = "border-[#D27B53] bg-[#D27B53]/10 text-[#D27B53]";
+                    }
 
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => handleSelectMCQ(option)}
-                          disabled={isAnswered || isSubmitting}
-                          className={`w-full text-left px-5 py-4 rounded-xl border transition-all flex justify-between items-center shadow-sm disabled:cursor-default ${cls}`}
-                        >
-                          <span className="text-[15px]">{option}</span>
-                          {isSubmitting && isSelected && <Loader2 className="w-4 h-4 animate-spin text-[#D27B53]" />}
-                          {isAnswered && isRight && <CheckCircle2 className="w-4 h-4 text-[#4CAF50]" />}
-                          {isAnswered && isSelected && !isRight && <XCircle className="w-4 h-4 text-[#F44336]" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleSelectMCQ(option)}
+                        disabled={isAnswered || isSubmitting}
+                        className={`w-full text-left px-5 py-4 rounded-xl border transition-all flex justify-between items-center shadow-sm disabled:cursor-default ${cls}`}
+                      >
+                        <span className="text-[15px]">{option}</span>
+                        {isSubmitting && isSelected && <Loader2 className="w-4 h-4 animate-spin text-[#D27B53]" />}
+                        {isAnswered && isRight && <CheckCircle2 className="w-4 h-4 text-[#4CAF50]" />}
+                        {isAnswered && isSelected && !isRight && <XCircle className="w-4 h-4 text-[#F44336]" />}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 {/* Next button */}
                 {isAnswered && isTop && (
