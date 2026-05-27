@@ -25,10 +25,10 @@ export default function QuizPage() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
 
   useEffect(() => {
-    const createSession = async (userId: string) => {
+    const createSession = async () => {
       try {
         
-        const res = await axios.post("/api/test/start", { userId });
+        const res = await axios.post("/api/test/start");
 
         if (res.data.question) {
           setQuestions([res.data.question]);
@@ -42,8 +42,8 @@ export default function QuizPage() {
       }
     };
 
-    const userId = localStorage.getItem("userId");
-    createSession(userId || "");
+    
+    createSession();
   }, []);
 
   const currentQuestion = questions[currentIndex];

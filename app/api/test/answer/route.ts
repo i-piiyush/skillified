@@ -140,7 +140,7 @@ export const POST = async (req: Request) => {
         where: { id: existingSession.userId },
         data: {
           latestScore: percentage,
-          weakTopics: analysis.weakTopics,
+          weakTopicNames: analysis.weakTopics,
           roleReadiness: analysis.roleReadiness,
           lastTested: new Date(),
         },

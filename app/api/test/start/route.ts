@@ -1,19 +1,21 @@
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
-  const body = await req.json();
-  const { userId } = body;
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  if (!userId) {
+  if (!session || !session.user) {
     return NextResponse.json(
-      {
-        success: false,
-        message: "user id can't be empty",
-      },
-      { status: 400 },
+      { success: false, message: "Unauthorized. Please log in." },
+      { status: 401 },
     );
   }
+  const userId = session.user.id
+  console.log("user id",userId)
 
   try {
     const user = await prisma.user.findUnique({
@@ -35,22 +37,22 @@ export const POST = async (req: Request) => {
       data: {
         userId: user.id,
         stack: user.stack,
-        domain: user.domain,
-        role: user.role,
+        domain: user.domain || "",
+        role: user.role || "" ,
         currentDiff: 1,
       },
     });
 
     const count = await prisma.question.count({
       where: {
-        domain: user.domain,
-        role: user.role,
+        domain: user.domain || "",
+        role: user.role || "",
         level: 1,
       },
     });
 
     const question = await prisma.question.findFirst({
-      where: { domain: user.domain, role: user.role, level: 1 },
+      where: { domain: user.domain || "", role: user.role || "", level: 1 },
       skip: Math.floor(Math.random() * count),
       select: {
         id: true,

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "users" ALTER COLUMN "domain" DROP NOT NULL,
+ALTER COLUMN "role" DROP NOT NULL;
