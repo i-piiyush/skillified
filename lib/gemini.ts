@@ -19,6 +19,9 @@ const LEVEL_DISTRIBUTION = [
   { level: 2, label: "hard" as const, weight: 0.33 },
 ];
 
+// Max consecutive batches that add zero new questions before we give up on this level
+const MAX_STALE_BATCHES = 4;
+
 const hashQuestion = (text: string) => {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 };
@@ -96,10 +99,7 @@ const DOMAIN_STACKS: Record<string, string[]> = {
 
 export const fetchStack = (domain: string): { stack: string[] } => {
   const stacks = DOMAIN_STACKS[domain];
-
-  if (stacks) {
-    return { stack: stacks };
-  }
+  if (stacks) return { stack: stacks };
 
   const partialMatch = Object.keys(DOMAIN_STACKS).find(
     (key) =>
@@ -107,9 +107,7 @@ export const fetchStack = (domain: string): { stack: string[] } => {
       domain.toLowerCase().includes(key.toLowerCase()),
   );
 
-  if (partialMatch) {
-    return { stack: DOMAIN_STACKS[partialMatch] };
-  }
+  if (partialMatch) return { stack: DOMAIN_STACKS[partialMatch] };
 
   console.warn(`Domain "${domain}" not found in DOMAIN_STACKS`);
   return { stack: [] };
@@ -119,60 +117,47 @@ export const fetchStack = (domain: string): { stack: string[] } => {
 
 const DOMAIN_STYLE: Record<
   string,
-  {
-    mode: "practical" | "theoretical";
-    lens: string;
-  }
+  { mode: "practical" | "theoretical"; lens: string }
 > = {
   "web development": {
     mode: "practical",
-    lens:
-      "Focus on WHY decisions are made in real codebases — why async/await over raw promises, why SSR over CSR for a given use case, why a specific caching strategy. Never ask someone to explain what X is; ask when and why X beats the alternative.",
+    lens: "Focus on WHY decisions are made in real codebases — why async/await over raw promises, why SSR over CSR for a given use case, why a specific caching strategy. Never ask someone to explain what X is; ask when and why X beats the alternative.",
   },
   "mobile development": {
     mode: "practical",
-    lens:
-      "Focus on real app behaviour — why a pattern causes jank, when to choose a specific navigation strategy, how lifecycle events interact with state. Ask 'under what condition does this break' style questions.",
+    lens: "Focus on real app behaviour — why a pattern causes jank, when to choose a specific navigation strategy, how lifecycle events interact with state. Ask 'under what condition does this break' style questions.",
   },
   "devops": {
     mode: "practical",
-    lens:
-      "Focus on operational tradeoffs — why rolling deploys over blue/green for a given constraint, what failure mode a specific Kubernetes config introduces, why a CI step ordering causes flakiness. Real infrastructure decision-making.",
+    lens: "Focus on operational tradeoffs — why rolling deploys over blue/green for a given constraint, what failure mode a specific Kubernetes config introduces, why a CI step ordering causes flakiness. Real infrastructure decision-making.",
   },
   "blockchain": {
     mode: "practical",
-    lens:
-      "Focus on implementation consequences — why a reentrancy guard is placed where it is, what happens to gas cost when storage layout changes, why a specific consensus choice breaks a use case.",
+    lens: "Focus on implementation consequences — why a reentrancy guard is placed where it is, what happens to gas cost when storage layout changes, why a specific consensus choice breaks a use case.",
   },
   "game development": {
     mode: "practical",
-    lens:
-      "Focus on runtime behaviour — why a physics update order causes drift, when object pooling hurts more than it helps, why a specific rendering call order causes flickering. Practical engine-level decisions.",
+    lens: "Focus on runtime behaviour — why a physics update order causes drift, when object pooling hurts more than it helps, why a specific rendering call order causes flickering. Practical engine-level decisions.",
   },
   "cloud computing": {
     mode: "practical",
-    lens:
-      "Focus on failure modes and cost tradeoffs — why eventual consistency breaks a specific workflow, when to use SQS vs SNS vs EventBridge, what happens to a Lambda cold start under a specific VPC config.",
+    lens: "Focus on failure modes and cost tradeoffs — why eventual consistency breaks a specific workflow, when to use SQS vs SNS vs EventBridge, what happens to a Lambda cold start under a specific VPC config.",
   },
   "data science": {
     mode: "theoretical",
-    lens:
-      "Focus on statistical and algorithmic concepts — why a model assumption is violated by a dataset property, what the bias-variance tradeoff implies for a given pipeline choice, when a metric is misleading. Conceptual depth over tool syntax.",
+    lens: "Focus on statistical and algorithmic concepts — why a model assumption is violated by a dataset property, what the bias-variance tradeoff implies for a given pipeline choice, when a metric is misleading. Conceptual depth over tool syntax.",
   },
   "machine learning": {
     mode: "theoretical",
-    lens:
-      "Focus on mathematical intuition and training dynamics — why a specific activation function causes vanishing gradients, what batch normalisation actually normalises and why the order relative to activation matters, why a loss landscape property makes an optimiser diverge. Ask WHY things work or break, not how to call a library.",
+    lens: "Focus on mathematical intuition and training dynamics — why a specific activation function causes vanishing gradients, what batch normalisation actually normalises and why the order relative to activation matters, why a loss landscape property makes an optimiser diverge. Ask WHY things work or break, not how to call a library.",
   },
   "cybersecurity": {
     mode: "theoretical",
-    lens:
-      "Focus on attack root causes and cryptographic fundamentals — why a specific HMAC construction is vulnerable, what property of RSA makes a padding oracle possible, why a CSP directive fails to block a specific XSS vector. Ask about underlying principles, not tool flags.",
+    lens: "Focus on attack root causes and cryptographic fundamentals — why a specific HMAC construction is vulnerable, what property of RSA makes a padding oracle possible, why a CSP directive fails to block a specific XSS vector. Ask about underlying principles, not tool flags.",
   },
   "system design": {
     mode: "theoretical",
-    lens:
-      "Focus on distributed systems theory and tradeoffs — why a specific consistency model cannot guarantee a property under network partition, what the practical consequence of clock skew is for a given consensus algorithm, when a CRDT is the wrong choice. Conceptual precision over solution templates.",
+    lens: "Focus on distributed systems theory and tradeoffs — why a specific consistency model cannot guarantee a property under network partition, what the practical consequence of clock skew is for a given consensus algorithm, when a CRDT is the wrong choice. Conceptual precision over solution templates.",
   },
 };
 
@@ -187,55 +172,38 @@ const ROLE_DEPTH = {
   Internship: {
     focus: "fundamental syntax, basic concepts, simple debugging",
     mcq: "definitions, basic usage, common beginner mistakes, reading simple code",
-    forbidden:
-      "system design, architectural decisions, performance optimization, distributed systems",
-    benchmark:
-      "questions a CS sophomore should answer after reading the official docs once",
+    forbidden: "system design, architectural decisions, performance optimization, distributed systems",
+    benchmark: "questions a CS sophomore should answer after reading the official docs once",
     depthRule: "Ask WHAT — definitions, basic usage, syntax",
     depthBad: "What does useState do?",
-    depthGood:
-      "What is the correct way to initialize state with a value that requires expensive computation?",
+    depthGood: "What is the correct way to initialize state with a value that requires expensive computation?",
   },
   SDE1: {
     focus: "practical implementation, common patterns, debugging real code",
     mcq: "how core language features work, common pitfalls, standard library behaviour, API contracts",
-    forbidden:
-      "theoretical CS papers, system design at scale, kernel-level or compiler internals",
-    benchmark:
-      "questions asked in junior developer phone screens at mid-tier product companies",
-    depthRule:
-      "Ask HOW — implementation details, why things behave a certain way, not just what they are",
+    forbidden: "theoretical CS papers, system design at scale, kernel-level or compiler internals",
+    benchmark: "questions asked in junior developer phone screens at mid-tier product companies",
+    depthRule: "Ask HOW — implementation details, why things behave a certain way, not just what they are",
     depthBad: "What does the event loop do?",
-    depthGood:
-      "Why does setTimeout(fn, 0) not guarantee immediate execution even when the call stack is empty?",
+    depthGood: "Why does setTimeout(fn, 0) not guarantee immediate execution even when the call stack is empty?",
   },
   SDE2: {
-    focus:
-      "production edge cases, performance tradeoffs, system interactions, security",
+    focus: "production edge cases, performance tradeoffs, system interactions, security",
     mcq: "memory management, concurrency issues, race conditions, scaling decisions, security vulnerabilities",
-    forbidden:
-      "hello world examples, basic syntax, simple definitions a junior knows",
-    benchmark:
-      "questions that appear in onsite rounds at product-based startups",
-    depthRule:
-      "Ask WHY + WHAT IF — edge cases, production consequences, tradeoffs between approaches",
+    forbidden: "hello world examples, basic syntax, simple definitions a junior knows",
+    benchmark: "questions that appear in onsite rounds at product-based startups",
+    depthRule: "Ask WHY + WHAT IF — edge cases, production consequences, tradeoffs between approaches",
     depthBad: "What is a memory leak?",
-    depthGood:
-      "A React component subscribes to a WebSocket in useEffect. Under what specific conditions does this cause a memory leak that survives component unmount?",
+    depthGood: "A React component subscribes to a WebSocket in useEffect. Under what specific conditions does this cause a memory leak that survives component unmount?",
   },
   SDE3: {
-    focus:
-      "runtime internals, architectural tradeoffs, MAANG-level depth, cross-system reasoning",
+    focus: "runtime internals, architectural tradeoffs, MAANG-level depth, cross-system reasoning",
     mcq: "runtime engine behaviour, memory model internals, distributed systems tradeoffs, compiler/interpreter decisions, performance at scale",
-    forbidden:
-      "ABSOLUTE BAN: anything a junior could answer, basic API questions, simple syntax, definitions — if a bootcamp graduate knows the answer it is DISQUALIFIED",
-    benchmark:
-      "questions that FAIL senior engineers in MAANG onsite rounds — ones that make 5+ year engineers pause and think hard",
-    depthRule:
-      "Ask HOW DOES IT ACTUALLY WORK INSIDE — engine internals, spec-level behaviour, architectural consequences",
+    forbidden: "ABSOLUTE BAN: anything a junior could answer, basic API questions, simple syntax, definitions — if a bootcamp graduate knows the answer it is DISQUALIFIED",
+    benchmark: "questions that FAIL senior engineers in MAANG onsite rounds — ones that make 5+ year engineers pause and think hard",
+    depthRule: "Ask HOW DOES IT ACTUALLY WORK INSIDE — engine internals, spec-level behaviour, architectural consequences",
     depthBad: "How does useState work under the hood?",
-    depthGood:
-      "React 18 batches setState calls inside setTimeout automatically. Explain the scheduler priority lane mechanism that enables this and why it breaks useSyncExternalStore in concurrent mode.",
+    depthGood: "React 18 batches setState calls inside setTimeout automatically. Explain the scheduler priority lane mechanism that enables this and why it breaks useSyncExternalStore in concurrent mode.",
   },
 } as const;
 
@@ -266,8 +234,7 @@ const DIFFICULTY_BY_ROLE = {
     SDE3: "Stumps mid-level engineers — requires accurate model of runtime internals",
   },
   hard: {
-    Internship:
-      "Tricky but fair — edge case a prepared intern knows after studying",
+    Internship: "Tricky but fair — edge case a prepared intern knows after studying",
     SDE1: "Questions junior devs consistently get wrong — prototype chain, event loop, closures",
     SDE2: "Startup onsite level — performance, security, architectural tradeoffs",
     SDE3: "MAANG onsite level — the question that ends interviews. If a senior dev can answer without hesitation it is TOO EASY",
@@ -299,9 +266,9 @@ const generateTestPrompt = (
 
   const existingContext =
     existingQuestions.length > 0
-      ? `ALREADY GENERATED — do NOT repeat or rephrase:\n${existingQuestions
-          .slice(-8)
-          .map((q, i) => `${i + 1}. "${q.text.slice(0, 60)}"`)
+      ? `ALREADY GENERATED — do NOT repeat or rephrase these topics (generate questions on DIFFERENT skills):\n${existingQuestions
+          .slice(-12)
+          .map((q, i) => `${i + 1}. "${q.text.slice(0, 70)}"`)
           .join("\n")}`
       : "";
 
@@ -367,9 +334,11 @@ ${existingContext}
 
 ═══ MCQ CONSTRUCTION RULES ═══
 ALL questions are MCQ. Zero output/code-execution questions.
+EACH question MUST have EXACTLY 4 options — no more, no less.
 
 MCQ must follow ALL of these:
 □ Question tests reasoning, not recall — the correct answer requires a mental model, not memorisation
+□ Exactly 4 options — 3 wrong, 1 correct
 □ All 4 options are plausible — someone who almost understands the topic should be tempted by at least 2 wrong options
 □ Correct answer is unambiguous — only one defensible answer exists
 □ Wrong options are specific misconceptions, not absurd distractors
@@ -390,16 +359,17 @@ BANNED QUESTION STARTERS:
 □ Is it specific to ${stackLabel} — not a generic CS question any domain could ask?
 □ Correct answer is unambiguous — only one defensible answer?
 □ All wrong options are plausible enough to trap someone who partially understands?
-□ Unique — not a rephrasing of any existing question?
+□ Unique — covers a DIFFERENT skill/concept from every question listed above?
 □ ${roleKey === "SDE3" ? "Would a 5-year senior engineer need to think before answering? If NO → too easy → discard." : `Matches ${roleKey} depth — not too junior, not too senior?`}
 □ Does the question match the ${domainStyle.mode.toUpperCase()} style directive above?
+□ Has EXACTLY 4 options in the options array?
 
 skillId: kebab-case slug e.g. "v8-hidden-classes", "react-fiber-reconciler", "grad-descent-convergence", "tls-handshake-rtt"
 
 OUTPUT FORMAT — JSON only, no markdown:
 {"questions":[{"skillId":"slug","level":${level},"text":"full question text","options":["option A","option B","option C","option D"],"correctAnswer":"exact text of correct option"}]}
 
-Generate EXACTLY ${neededCount} questions now. Apply every quality gate. If a question fails any gate — replace it before outputting.`;
+Generate EXACTLY ${neededCount} questions now. Each must cover a distinct skill not already listed above. Apply every quality gate. If a question fails any gate — replace it before outputting.`;
 };
 
 // ─── LLM Caller ──────────────────────────────────────────────────────────────
@@ -422,7 +392,7 @@ async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
             content: prompt,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.85,
         max_tokens: 3000,
         response_format: { type: "json_object" },
       });
@@ -446,9 +416,7 @@ async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
 
       if (is429) {
         const wait = 5000 * Math.pow(2, attempt - 1);
-        console.warn(
-          `⏳ Rate limited (attempt ${attempt}). Waiting ${wait / 1000}s...`,
-        );
+        console.warn(`⏳ Rate limited (attempt ${attempt}). Waiting ${wait / 1000}s...`);
         await sleep(wait);
         continue;
       }
@@ -492,6 +460,9 @@ export const fetchTest = async (
     const levelTarget = Math.max(1, Math.round(TARGET_COUNT * weight));
     let levelCount = 0;
     let emptyBatchStreak = 0;
+    // Tracks consecutive batches that returned > 0 questions from LLM
+    // but added 0 new ones (all duplicates / bad format) — the real stuck signal
+    let staleBatchStreak = 0;
 
     console.log(`\n📚 [${label.toUpperCase()}] Target: ${levelTarget} questions`);
 
@@ -513,6 +484,7 @@ export const fetchTest = async (
 
       const batch = await callLLM(prompt, neededNow);
 
+      // ── Completely empty response ─────────────────────────────────────────
       if (batch.length === 0) {
         emptyBatchStreak++;
         console.warn(`  ⚠️ Empty batch (streak: ${emptyBatchStreak})`);
@@ -526,16 +498,25 @@ export const fetchTest = async (
 
       emptyBatchStreak = 0;
 
+      // ── Validate and deduplicate ──────────────────────────────────────────
       const validBatch: PrismaQuestion[] = [];
 
       for (const q of batch) {
         if (levelCount >= levelTarget) break;
-
-        // ✅ FIX: only check for fields that actually exist in the response
         if (!q.text || !q.correctAnswer) continue;
-        if (!Array.isArray(q.options) || q.options.length !== 4) continue;
 
-        // ✅ FIX: hash only on text (no more q.code)
+        // Must have exactly 4 options — skip malformed questions
+        if (!Array.isArray(q.options) || q.options.length !== 4) {
+          console.warn(`  ⚠️ Skipping question with ${q.options?.length ?? 0} options: "${q.text?.slice(0, 50)}"`);
+          continue;
+        }
+
+        // Correct answer must be one of the options
+        if (!q.options.includes(q.correctAnswer)) {
+          console.warn(`  ⚠️ Skipping question where correctAnswer not in options: "${q.text?.slice(0, 50)}"`);
+          continue;
+        }
+
         const hash = hashQuestion(q.text);
         if (seenHashes.has(hash)) continue;
         seenHashes.add(hash);
@@ -554,15 +535,32 @@ export const fetchTest = async (
         levelCount++;
       }
 
-      if (validBatch.length > 0) {
-        await prisma.question.createMany({
-          data: validBatch,
-          skipDuplicates: true,
-        });
-        allQuestions.push(...validBatch);
-        onProgress?.(allQuestions.length, TARGET_COUNT);
-        console.log(`  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`);
+      // ── Stale streak: LLM responded but nothing passed validation ─────────
+      if (validBatch.length === 0) {
+        staleBatchStreak++;
+        console.warn(`  ⚠️ No new valid questions in batch (stale streak: ${staleBatchStreak})`);
+
+        if (staleBatchStreak >= MAX_STALE_BATCHES) {
+          console.warn(
+            `  ⚠️ Hit stale limit for [${label}] at ${levelCount}/${levelTarget} — accepting partial and moving on`,
+          );
+          break;
+        }
+
+        await sleep(1000);
+        continue;
       }
+
+      staleBatchStreak = 0;
+
+      // ── Save to DB ────────────────────────────────────────────────────────
+      await prisma.question.createMany({
+        data: validBatch,
+        skipDuplicates: true,
+      });
+      allQuestions.push(...validBatch);
+      onProgress?.(allQuestions.length, TARGET_COUNT);
+      console.log(`  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`);
 
       if (levelCount < levelTarget) {
         await sleep(1000);

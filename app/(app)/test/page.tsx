@@ -113,15 +113,17 @@ export default function QuizPage() {
           className="max-w-md w-full bg-white rounded-2xl p-10 border border-[#E6E2DD] shadow-sm text-center font-serif"
         >
           <h2 className="text-4xl font-semibold mb-2 text-[#2A2927]">Test Complete</h2>
-          <p className="text-[#9A958E] mb-8 text-sm">Here's how you performed</p>
+          <p className="text-[#9A958E] mb-8 text-sm">Here&apos;s how you performed</p>
           <div className="text-6xl font-mono font-bold text-[#D27B53] mb-1">{analysisResult?.percentage || "0"}%</div>
           <p className="text-[#9A958E] text-sm font-mono mb-8">{analysisResult?.verdict || "verdict not available"}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+
+            }}
             className="w-full flex items-center justify-center gap-2 bg-[#D27B53] text-white py-3.5 rounded-xl font-medium hover:bg-[#b86642] transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
-            Start New Session
+            Go to dashboard
           </button>
         </motion.div>
       </div>
