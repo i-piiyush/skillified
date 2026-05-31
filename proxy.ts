@@ -18,7 +18,7 @@ export const proxy = (request: NextRequest) => {
     }
   }
 
-  const protectedRoutes = ["/test"];
+  const protectedRoutes = ["/test","/dashboard"];
   const isProtectedRoute = protectedRoutes.some((route) =>
     path.startsWith(route),
   );
