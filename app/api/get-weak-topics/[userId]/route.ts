@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export const GET = async (_req: Request, { params }: { params: Promise<{ userId: string }> }) => {
+export const GET = async (
+  _req: Request,
+  { params }: { params: Promise<{ userId: string }> },
+) => {
+  const { userId } = await params;
 
-  const {userId} = await params;
-
-  
   try {
     const weakTopics = await prisma.weakTopic.findMany({
       where: { userId: userId },
-     
+      include: {
+        topResource: true,
+      },
     });
 
     if (!weakTopics) {
@@ -19,7 +22,11 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ userId:
       );
     }
     return NextResponse.json(
-      { success: true, message: "Weak topics fetched successfully", weakTopics },
+      {
+        success: true,
+        message: "Weak topics fetched successfully",
+        weakTopics,
+      },
       { status: 200 },
     );
   } catch (error: any) {
