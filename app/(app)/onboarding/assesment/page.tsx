@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 // 🔥 Apna existing schema aur type yahan import karo
 // NOTE: Is path ko apne project ke hisaab se update kar lena jahan schema rakha hai
-import { signUpValidation } from "../../../schemas/frontend/signupSchema"; 
+import { signUpValidation } from "../../../../schemas/frontend/signupSchema"; 
 import { SignUpFormData } from "@/types/signUp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

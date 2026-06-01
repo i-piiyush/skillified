@@ -2,9 +2,7 @@ import Groq from "groq-sdk";
 import { prisma } from "./prisma";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 const TARGET_COUNT = 50;
 
 const BATCH_SIZE = {
@@ -127,11 +125,11 @@ const DOMAIN_STYLE: Record<
     mode: "practical",
     lens: "Focus on real app behaviour — why a pattern causes jank, when to choose a specific navigation strategy, how lifecycle events interact with state. Ask 'under what condition does this break' style questions.",
   },
-  "devops": {
+  devops: {
     mode: "practical",
     lens: "Focus on operational tradeoffs — why rolling deploys over blue/green for a given constraint, what failure mode a specific Kubernetes config introduces, why a CI step ordering causes flakiness. Real infrastructure decision-making.",
   },
-  "blockchain": {
+  blockchain: {
     mode: "practical",
     lens: "Focus on implementation consequences — why a reentrancy guard is placed where it is, what happens to gas cost when storage layout changes, why a specific consensus choice breaks a use case.",
   },
@@ -151,7 +149,7 @@ const DOMAIN_STYLE: Record<
     mode: "theoretical",
     lens: "Focus on mathematical intuition and training dynamics — why a specific activation function causes vanishing gradients, what batch normalisation actually normalises and why the order relative to activation matters, why a loss landscape property makes an optimiser diverge. Ask WHY things work or break, not how to call a library.",
   },
-  "cybersecurity": {
+  cybersecurity: {
     mode: "theoretical",
     lens: "Focus on attack root causes and cryptographic fundamentals — why a specific HMAC construction is vulnerable, what property of RSA makes a padding oracle possible, why a CSP directive fails to block a specific XSS vector. Ask about underlying principles, not tool flags.",
   },
@@ -172,38 +170,55 @@ const ROLE_DEPTH = {
   Internship: {
     focus: "fundamental syntax, basic concepts, simple debugging",
     mcq: "definitions, basic usage, common beginner mistakes, reading simple code",
-    forbidden: "system design, architectural decisions, performance optimization, distributed systems",
-    benchmark: "questions a CS sophomore should answer after reading the official docs once",
+    forbidden:
+      "system design, architectural decisions, performance optimization, distributed systems",
+    benchmark:
+      "questions a CS sophomore should answer after reading the official docs once",
     depthRule: "Ask WHAT — definitions, basic usage, syntax",
     depthBad: "What does useState do?",
-    depthGood: "What is the correct way to initialize state with a value that requires expensive computation?",
+    depthGood:
+      "What is the correct way to initialize state with a value that requires expensive computation?",
   },
   SDE1: {
     focus: "practical implementation, common patterns, debugging real code",
     mcq: "how core language features work, common pitfalls, standard library behaviour, API contracts",
-    forbidden: "theoretical CS papers, system design at scale, kernel-level or compiler internals",
-    benchmark: "questions asked in junior developer phone screens at mid-tier product companies",
-    depthRule: "Ask HOW — implementation details, why things behave a certain way, not just what they are",
+    forbidden:
+      "theoretical CS papers, system design at scale, kernel-level or compiler internals",
+    benchmark:
+      "questions asked in junior developer phone screens at mid-tier product companies",
+    depthRule:
+      "Ask HOW — implementation details, why things behave a certain way, not just what they are",
     depthBad: "What does the event loop do?",
-    depthGood: "Why does setTimeout(fn, 0) not guarantee immediate execution even when the call stack is empty?",
+    depthGood:
+      "Why does setTimeout(fn, 0) not guarantee immediate execution even when the call stack is empty?",
   },
   SDE2: {
-    focus: "production edge cases, performance tradeoffs, system interactions, security",
+    focus:
+      "production edge cases, performance tradeoffs, system interactions, security",
     mcq: "memory management, concurrency issues, race conditions, scaling decisions, security vulnerabilities",
-    forbidden: "hello world examples, basic syntax, simple definitions a junior knows",
-    benchmark: "questions that appear in onsite rounds at product-based startups",
-    depthRule: "Ask WHY + WHAT IF — edge cases, production consequences, tradeoffs between approaches",
+    forbidden:
+      "hello world examples, basic syntax, simple definitions a junior knows",
+    benchmark:
+      "questions that appear in onsite rounds at product-based startups",
+    depthRule:
+      "Ask WHY + WHAT IF — edge cases, production consequences, tradeoffs between approaches",
     depthBad: "What is a memory leak?",
-    depthGood: "A React component subscribes to a WebSocket in useEffect. Under what specific conditions does this cause a memory leak that survives component unmount?",
+    depthGood:
+      "A React component subscribes to a WebSocket in useEffect. Under what specific conditions does this cause a memory leak that survives component unmount?",
   },
   SDE3: {
-    focus: "runtime internals, architectural tradeoffs, MAANG-level depth, cross-system reasoning",
+    focus:
+      "runtime internals, architectural tradeoffs, MAANG-level depth, cross-system reasoning",
     mcq: "runtime engine behaviour, memory model internals, distributed systems tradeoffs, compiler/interpreter decisions, performance at scale",
-    forbidden: "ABSOLUTE BAN: anything a junior could answer, basic API questions, simple syntax, definitions — if a bootcamp graduate knows the answer it is DISQUALIFIED",
-    benchmark: "questions that FAIL senior engineers in MAANG onsite rounds — ones that make 5+ year engineers pause and think hard",
-    depthRule: "Ask HOW DOES IT ACTUALLY WORK INSIDE — engine internals, spec-level behaviour, architectural consequences",
+    forbidden:
+      "ABSOLUTE BAN: anything a junior could answer, basic API questions, simple syntax, definitions — if a bootcamp graduate knows the answer it is DISQUALIFIED",
+    benchmark:
+      "questions that FAIL senior engineers in MAANG onsite rounds — ones that make 5+ year engineers pause and think hard",
+    depthRule:
+      "Ask HOW DOES IT ACTUALLY WORK INSIDE — engine internals, spec-level behaviour, architectural consequences",
     depthBad: "How does useState work under the hood?",
-    depthGood: "React 18 batches setState calls inside setTimeout automatically. Explain the scheduler priority lane mechanism that enables this and why it breaks useSyncExternalStore in concurrent mode.",
+    depthGood:
+      "React 18 batches setState calls inside setTimeout automatically. Explain the scheduler priority lane mechanism that enables this and why it breaks useSyncExternalStore in concurrent mode.",
   },
 } as const;
 
@@ -234,7 +249,8 @@ const DIFFICULTY_BY_ROLE = {
     SDE3: "Stumps mid-level engineers — requires accurate model of runtime internals",
   },
   hard: {
-    Internship: "Tricky but fair — edge case a prepared intern knows after studying",
+    Internship:
+      "Tricky but fair — edge case a prepared intern knows after studying",
     SDE1: "Questions junior devs consistently get wrong — prototype chain, event loop, closures",
     SDE2: "Startup onsite level — performance, security, architectural tradeoffs",
     SDE3: "MAANG onsite level — the question that ends interviews. If a senior dev can answer without hesitation it is TOO EASY",
@@ -258,8 +274,8 @@ const generateTestPrompt = (
 
   const domainKey = domain.toLowerCase().trim();
   const domainStyle =
-    Object.entries(DOMAIN_STYLE).find(([key]) =>
-      domainKey.includes(key) || key.includes(domainKey),
+    Object.entries(DOMAIN_STYLE).find(
+      ([key]) => domainKey.includes(key) || key.includes(domainKey),
     )?.[1] ?? DEFAULT_DOMAIN_STYLE;
 
   const thisLevelInstruction = DIFFICULTY_BY_ROLE[difficulty][roleKey];
@@ -416,7 +432,9 @@ async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
 
       if (is429) {
         const wait = 5000 * Math.pow(2, attempt - 1);
-        console.warn(`⏳ Rate limited (attempt ${attempt}). Waiting ${wait / 1000}s...`);
+        console.warn(
+          `⏳ Rate limited (attempt ${attempt}). Waiting ${wait / 1000}s...`,
+        );
         await sleep(wait);
         continue;
       }
@@ -464,14 +482,18 @@ export const fetchTest = async (
     // but added 0 new ones (all duplicates / bad format) — the real stuck signal
     let staleBatchStreak = 0;
 
-    console.log(`\n📚 [${label.toUpperCase()}] Target: ${levelTarget} questions`);
+    console.log(
+      `\n📚 [${label.toUpperCase()}] Target: ${levelTarget} questions`,
+    );
 
     while (levelCount < levelTarget) {
       const remaining = levelTarget - levelCount;
       const batchSize = BATCH_SIZE[label];
       const neededNow = Math.min(batchSize, remaining);
 
-      console.log(`  → Requesting batch of ${neededNow} (${levelCount}/${levelTarget} done)`);
+      console.log(
+        `  → Requesting batch of ${neededNow} (${levelCount}/${levelTarget} done)`,
+      );
 
       const prompt = generateTestPrompt(
         domain,
@@ -489,7 +511,9 @@ export const fetchTest = async (
         emptyBatchStreak++;
         console.warn(`  ⚠️ Empty batch (streak: ${emptyBatchStreak})`);
         if (emptyBatchStreak >= 3) {
-          console.error(`  ❌ 3 empty batches in a row for [${label}] — moving on`);
+          console.error(
+            `  ❌ 3 empty batches in a row for [${label}] — moving on`,
+          );
           break;
         }
         await sleep(1000);
@@ -507,13 +531,17 @@ export const fetchTest = async (
 
         // Must have exactly 4 options — skip malformed questions
         if (!Array.isArray(q.options) || q.options.length !== 4) {
-          console.warn(`  ⚠️ Skipping question with ${q.options?.length ?? 0} options: "${q.text?.slice(0, 50)}"`);
+          console.warn(
+            `  ⚠️ Skipping question with ${q.options?.length ?? 0} options: "${q.text?.slice(0, 50)}"`,
+          );
           continue;
         }
 
         // Correct answer must be one of the options
         if (!q.options.includes(q.correctAnswer)) {
-          console.warn(`  ⚠️ Skipping question where correctAnswer not in options: "${q.text?.slice(0, 50)}"`);
+          console.warn(
+            `  ⚠️ Skipping question where correctAnswer not in options: "${q.text?.slice(0, 50)}"`,
+          );
           continue;
         }
 
@@ -538,7 +566,9 @@ export const fetchTest = async (
       // ── Stale streak: LLM responded but nothing passed validation ─────────
       if (validBatch.length === 0) {
         staleBatchStreak++;
-        console.warn(`  ⚠️ No new valid questions in batch (stale streak: ${staleBatchStreak})`);
+        console.warn(
+          `  ⚠️ No new valid questions in batch (stale streak: ${staleBatchStreak})`,
+        );
 
         if (staleBatchStreak >= MAX_STALE_BATCHES) {
           console.warn(
@@ -560,7 +590,9 @@ export const fetchTest = async (
       });
       allQuestions.push(...validBatch);
       onProgress?.(allQuestions.length, TARGET_COUNT);
-      console.log(`  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`);
+      console.log(
+        `  ✓ Saved ${validBatch.length} → Total: ${allQuestions.length}/${TARGET_COUNT}`,
+      );
 
       if (levelCount < levelTarget) {
         await sleep(1000);
@@ -570,4 +602,169 @@ export const fetchTest = async (
 
   console.log(`\n✅ Done. Generated ${allQuestions.length} questions total.`);
   return allQuestions;
+};
+
+export const generateQuestion = async (userData: Record<string, any>) => {
+  try {
+    const prompt = `
+You are a smart onboarding assistant helping build a highly personalized learning roadmap.
+
+User Profile:
+${JSON.stringify(userData, null, 2)}
+
+The selected domain is "${userData.domain}".
+
+IMPORTANT:
+
+Every field already present in the User Profile represents information that is already known.
+
+You MUST NOT ask about information that can already be inferred from existing fields.
+
+Examples:
+
+- If "frontendLevel" exists, do not ask about frontend experience.
+- If "specialization" exists, do not ask about specialization.
+- If "learningStyle" exists, do not ask about learning style.
+- If "projectExperience" exists, do not ask about project experience.
+
+Your job is to identify the SINGLE most valuable missing piece of information that would improve roadmap quality.
+
+The information categories you may explore are:
+
+- specialization
+- skillLevel
+- projectExperience
+- learningStyle
+- knowledgeGap
+- backendExperience
+- frontendExperience
+- dsaLevel
+- systemDesignLevel
+- deploymentExperience
+
+Before generating a question:
+
+1. Analyze the profile.
+2. Determine which categories are already known.
+3. Determine which categories are still missing.
+4. Choose ONLY ONE missing category.
+5. Generate a question for that category.
+
+Question Requirements:
+
+- Ask only ONE question.
+- Stay strictly within the selected domain.
+- Do not ask about unrelated domains.
+- Do not ask about timelines.
+- Do not ask about goal, company type, academic status, study hours, or domain.
+- The question should uncover NEW information.
+- The question should feel natural and conversational.
+- No emojis.
+- Maximum 5 options.
+- Options must be mutually exclusive.
+- Options should be short.
+
+For experience-related questions:
+
+- Avoid beginner/intermediate/advanced.
+- Use concrete milestones.
+- Create a clear progression.
+- Each option should represent a distinct level.
+
+Good Example:
+
+{
+  "question": "how far have you gotten with react so far?",
+  "options": [
+    "never touched it",
+    "followed tutorials",
+    "built small projects",
+    "built complete apps",
+    "comfortable using it"
+  ],
+  "jsonKey": "reactLevel"
+}
+
+Good Example:
+
+{
+  "question": "what part of web development feels hardest right now?",
+  "options": [
+    "javascript",
+    "react",
+    "backend",
+    "databases",
+    "dsa"
+  ],
+  "jsonKey": "knowledgeGap"
+}
+
+Bad Example:
+
+{
+  "question": "what is your frontend experience level?",
+  "options": [
+    "beginner",
+    "intermediate",
+    "advanced"
+  ],
+  "jsonKey": "frontend"
+}
+
+because the options are vague and do not provide useful signal.
+
+Return ONLY valid JSON.
+
+Response Format:
+
+{
+  "question": "string",
+  "options": [
+    "string"
+  ],
+  "jsonKey": "camelCaseString"
+}
+`;
+
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Always respond with valid JSON only. No markdown. No explanations.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
+      response_format: { type: "json_object" },
+    });
+
+    const text = response.choices[0]?.message?.content;
+
+    console.log("Groq raw response:", text);
+
+    if (!text) {
+      throw new Error("Empty response from model");
+    }
+
+    const parsed = JSON.parse(text);
+
+    return {
+      question: parsed.question,
+      options: parsed.options,
+      jsonKey: parsed.jsonKey,
+    };
+  } catch (error: any) {
+    console.error(
+      "Error generating roadmap question:",
+      error?.message || error,
+    );
+
+    throw error;
+  }
 };

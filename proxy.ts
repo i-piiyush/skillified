@@ -6,7 +6,13 @@ export const proxy = (request: NextRequest) => {
     .some((c) => c.name.includes("better-auth.session_token"));
   const path = request.nextUrl.pathname;
 
-  const publicApis = ["/api/generate-stack", "/api/onboard-user", "/api/auth","/api/save-n8n-data"];
+  const publicApis = [
+    "/api/generate-stack",
+    "/api/onboard-user",
+    "/api/auth",
+    "/api/save-n8n-data",
+    "/api/roadmap/generate-question",
+  ];
   const isPublicApi = publicApis.some((route) => path.startsWith(route));
 
   if (path.startsWith("/api") && !isPublicApi) {
@@ -18,7 +24,7 @@ export const proxy = (request: NextRequest) => {
     }
   }
 
-  const protectedRoutes = ["/test","/dashboard"];
+  const protectedRoutes = ["/test", "/dashboard"];
   const isProtectedRoute = protectedRoutes.some((route) =>
     path.startsWith(route),
   );
