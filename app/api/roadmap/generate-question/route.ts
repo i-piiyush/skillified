@@ -1,4 +1,4 @@
-import { generateQuestion } from "@/lib/gemini";
+import { generateQuestion, generateRoadmap } from "@/lib/gemini";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
@@ -7,11 +7,14 @@ export const POST = async (req: Request) => {
     console.log("body: ", body);
 
     const question = await generateQuestion(body);
+   
 
     return NextResponse.json(
       {
         success: true,
-        question,
+        message:"question fetched successfully",
+        
+        question
       },
       { status: 200 },
     );

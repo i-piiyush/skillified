@@ -1,4 +1,3 @@
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -29,6 +28,8 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+
+  roadmaps Roadmap[]
 
   @@map("users")
 }
@@ -116,7 +117,6 @@ enum TestStatus {
   completed
 }
 
-
 model Session {
   id        String   @id
   expiresAt DateTime
@@ -163,4 +163,44 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Roadmap {
+  id                 String         @id @default(uuid())
+  userId             String @unique
+  estimatedMonths    Int
+  practicalWeight    Int
+  dsaWeight          Int
+  systemDesignWeight Int
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topics             RoadmapTopic[]
+
+  @@index([userId])
+}
+
+model RoadmapTopic {
+  id              String    @id @default(uuid())
+  roadmapId       String
+  roadmap         Roadmap   @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  type            TopicType
+  name            String
+  depth           Int
+  focusedHours    Int
+  focus           String[]
+  avoid           String[]
+  projects        String[]  @default([])
+  easyQuestions   Int?
+  mediumQuestions Int?
+  createdAt       DateTime  @default(now())
+
+  @@index([roadmapId])
+  @@index([type])
+}
+
+enum TopicType {
+  PRACTICAL
+  DSA
+  SYSTEM_DESIGN
 }

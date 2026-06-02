@@ -768,3 +768,301 @@ Response Format:
     throw error;
   }
 };
+
+
+export const generateRoadmap = async (
+  userProfile: Record<string, any>,
+) => {
+  try {
+const prompt = `
+You are an expert career mentor, hiring manager, and roadmap planner.
+
+Generate a realistic, personalized, and job-focused learning roadmap.
+
+USER PROFILE:
+${JSON.stringify(userProfile, null, 2)}
+
+Personalization
+Correct company-specific weighting
+Logical topic ordering
+Realistic depth assignment
+Portfolio-worthy projects
+Valid JSON structure
+
+If rules conflict, prioritize higher-ranked rules.
+
+The roadmap MUST visibly change when the user profile changes.
+
+Every recommendation must be explainable from the profile.
+
+Use:
+
+goal
+targetCompany
+projectExperience
+learningStyle
+knowledgeGap
+experience levels
+
+Do not generate generic learning paths.
+
+Weights must sum to exactly 100.
+
+MAANG / FAANG / Top Product Companies:
+
+Practical: 40-50
+DSA: 40-50
+System Design: 10-20
+
+Product Companies:
+
+Practical: 50-65
+DSA: 25-40
+System Design: 5-15
+
+Product Startups:
+
+Practical: 65-85
+DSA: 10-25
+System Design: 0-10
+
+Service Companies:
+
+Practical: 60-75
+DSA: 15-30
+System Design: 0-10
+
+Depth Scale:
+
+1 = Awareness
+2 = Beginner
+3 = Intermediate
+4 = Advanced
+5 = Interview Ready
+
+Assign depth using demonstrated ability.
+
+Never assign depth above demonstrated ability.
+
+Examples:
+
+never used → 1
+
+followed tutorials → 2
+
+built small projects → 3
+
+built production systems → 4
+
+professional experience → 5
+
+Practical topics must be concrete learnable topics.
+
+BAD:
+
+Frontend Development
+Backend Development
+Machine Learning
+Blockchain Development
+Cybersecurity
+Backend Fundamentals
+Frontend Basics
+
+GOOD:
+
+HTML
+CSS
+JavaScript
+React
+Node.js
+Authentication
+Docker
+Linux
+Solidity
+Smart Contracts
+
+Practical topic names MUST NOT contain:
+
+Development
+Fundamentals
+Basics
+Concepts
+
+Each topic should represent a skill that can be learned before moving to the next topic.
+
+Topics must appear in learning order.
+
+Projects should:
+
+Reinforce the topic
+Improve employability
+Match user experience
+Become progressively harder
+
+Avoid generic tutorial projects.
+
+DO NOT USE:
+
+Todo App
+Calculator
+Counter App
+Notes App
+Basic Weather App
+Basic Blog
+
+Prefer:
+
+Authentication System
+Expense Tracker
+URL Shortener
+Project Management Tool
+Job Board Platform
+Learning Management System
+Real-Time Chat Application
+E-commerce Platform
+Analytics Dashboard
+
+If DSA is not useful:
+return null.
+
+For MAANG / FAANG:
+
+DSA MUST contain at least 10 topics.
+
+Include topics from:
+
+Arrays
+Strings
+Hash Maps
+Linked Lists
+Stacks
+Queues
+Binary Search
+Trees
+Heaps
+Graphs
+Dynamic Programming
+
+Roadmap should progress from easier topics to harder topics.
+
+Beginners should receive minimal System Design.
+
+1st year students:
+
+very little system design
+
+Senior candidates:
+
+more system design
+
+If System Design is unnecessary:
+return null.
+
+The roadmap should resemble what an experienced mentor would recommend.
+
+Avoid:
+
+generic advice
+tutorial-style roadmaps
+unrealistic expectations
+
+Before returning:
+
+Does the roadmap reflect the profile?
+Does DSA coverage match the company?
+Are projects portfolio-worthy?
+Are topics concrete?
+Is topic order logical?
+Is depth realistic?
+
+If any answer is NO, revise before returning.
+
+Return ONLY valid JSON.
+
+{
+"estimatedMonths": number,
+
+"practicalWeight": number,
+"dsaWeight": number,
+"systemDesignWeight": number,
+
+"practicalTopics": [
+{
+"name": string,
+"depth": number,
+"focusedHours": number,
+"focus": [string],
+"avoid": [string],
+"projects": [string]
+}
+],
+
+"dsaTopics": [
+{
+"name": string,
+"depth": number,
+"focusedHours": number,
+"totalQuestion": {
+"easy": number,
+"medium": number
+}
+}
+] | null,
+
+"systemDesignTopics": [
+{
+"name": string,
+"depth": number,
+"focusedHours": number,
+"focus": [string],
+"avoid": [string]
+}
+] | null
+}
+
+Return JSON only.
+No explanations.
+No markdown.
+No notes.
+`;
+
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert roadmap generator. Always return valid JSON only.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+
+      temperature: 0.35,
+
+      max_tokens: 2500,
+
+      response_format: {
+        type: "json_object",
+      },
+    });
+
+    const text = response.choices[0]?.message?.content;
+
+    if (!text) {
+      throw new Error("Empty response");
+    }
+
+    return JSON.parse(text);
+  } catch (error: any) {
+    console.error(
+      "error generating roadmap:",
+      error?.message || error,
+    );
+    throw error;
+  }
+};
+
