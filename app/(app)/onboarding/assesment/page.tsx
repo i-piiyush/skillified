@@ -11,13 +11,12 @@ import {
 } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 // 🔥 Apna existing schema aur type yahan import karo
 // NOTE: Is path ko apne project ke hisaab se update kar lena jahan schema rakha hai
-import { signUpValidation } from "../../../../schemas/frontend/signupSchema"; 
+import { onboardValidation } from "../../../../schemas/frontend/onboardSchema";
 import { SignUpFormData } from "@/types/signUp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -154,7 +153,6 @@ function parseAxiosError(error: unknown): string {
   return "An unknown error occurred.";
 }
 
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function RegistrationPage() {
@@ -165,7 +163,7 @@ export default function RegistrationPage() {
   const [stackSearch, setStackSearch] = useState("");
   const [domainOpen, setDomainOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   const [isGeneratingTest, setIsGeneratingTest] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -181,9 +179,8 @@ export default function RegistrationPage() {
     formState: { errors },
     watch,
     trigger,
-    setError,
   } = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpValidation), 
+    resolver: zodResolver(onboardValidation),
     defaultValues: {
       name: "",
       email: "",
@@ -196,11 +193,7 @@ export default function RegistrationPage() {
   const selectedDomain = watch("domain") || "";
   const selectedStack = watch("stack") || "";
   const selectedRole = watch("role") || "";
-  const [nameValue, emailValue] = watch([
-    "name",
-    "email",
-  
-  ]);
+  const [nameValue, emailValue] = watch(["name", "email"]);
 
   useEffect(() => {
     setStepError(null);
@@ -225,9 +218,11 @@ export default function RegistrationPage() {
         { timeout: 15_000 },
       );
 
-      if (!res.data?.success) throw new Error("Server returned unsuccessful response.");
-      if (!Array.isArray(res.data.stack) || res.data.stack.length === 0) throw new Error("No technologies returned.");
-      
+      if (!res.data?.success)
+        throw new Error("Server returned unsuccessful response.");
+      if (!Array.isArray(res.data.stack) || res.data.stack.length === 0)
+        throw new Error("No technologies returned.");
+
       setStackOptions(res.data.stack);
       setStep(1);
     } catch (error) {
@@ -238,7 +233,6 @@ export default function RegistrationPage() {
       setLoading(false);
     }
   };
-
 
   const startTest = async (): Promise<boolean> => {
     try {
@@ -260,13 +254,13 @@ export default function RegistrationPage() {
   const handleNext = async () => {
     setStepError(null);
     const fields = STEP_FIELDS[step];
-    console.log(fields)
-    
+    console.log(fields);
+
     if (fields) {
       const isValid = await trigger(fields);
-      if (!isValid) return; 
+      if (!isValid) return;
     }
-    
+
     if (step === 0) await fetchStack();
     else if (step === 1) setStep((s) => s + 1);
     else if (step === 2) setStep((s) => s + 1);
@@ -278,18 +272,16 @@ export default function RegistrationPage() {
   };
 
   const handleFinalSubmit = async () => {
-   
-    
     setIsGeneratingTest(true);
 
     try {
       const [testStarted] = await Promise.all([
         startTest(),
-        new Promise((resolve) => setTimeout(resolve, 2000)), 
+        new Promise((resolve) => setTimeout(resolve, 2000)),
       ]);
 
       if (testStarted) {
-        router.push("/test"); 
+        router.push("/test");
       } else {
         setIsGeneratingTest(false);
       }
@@ -309,7 +301,8 @@ export default function RegistrationPage() {
             Generating your test...
           </h2>
           <p className="text-stone-300 font-sans text-sm text-center px-4 max-w-sm">
-            Please wait while we analyze your stack and craft the perfect assessment.
+            Please wait while we analyze your stack and craft the perfect
+            assessment.
           </p>
         </div>
       )}
@@ -346,7 +339,9 @@ export default function RegistrationPage() {
                       placeholder="e.g. Piyush Chhabra"
                       register={register("name")}
                     />
-                    {errors.name && <FieldError message={errors.name.message} />}
+                    {errors.name && (
+                      <FieldError message={errors.name.message} />
+                    )}
                   </div>
                   <div>
                     <Input
@@ -355,9 +350,10 @@ export default function RegistrationPage() {
                       placeholder="piyush@example.com"
                       register={register("email")}
                     />
-                    {errors.email && <FieldError message={errors.email.message} />}
+                    {errors.email && (
+                      <FieldError message={errors.email.message} />
+                    )}
                   </div>
-                 
 
                   {/* Domain Dropdown */}
                   <div className="relative" ref={domainRef}>
@@ -368,17 +364,25 @@ export default function RegistrationPage() {
                       type="button"
                       onClick={() => setDomainOpen(!domainOpen)}
                       className={`w-full flex items-center justify-between px-4 py-3.5 bg-dust/20 border rounded-2xl transition-all font-sans text-sm ${
-                        domainOpen ? "border-chestnut ring-4 ring-chestnut/5" : "border-dust/60"
+                        domainOpen
+                          ? "border-chestnut ring-4 ring-chestnut/5"
+                          : "border-dust/60"
                       }`}
                     >
-                      <span className={selectedDomain ? "text-stone-900" : "text-stone-400"}>
+                      <span
+                        className={
+                          selectedDomain ? "text-stone-900" : "text-stone-400"
+                        }
+                      >
                         {selectedDomain || "Select your field"}
                       </span>
                       <ChevronDown
                         className={`w-4 h-4 text-stone-400 transition-transform ${domainOpen ? "rotate-180" : ""}`}
                       />
                     </button>
-                    {errors.domain && <FieldError message={errors.domain.message} />}
+                    {errors.domain && (
+                      <FieldError message={errors.domain.message} />
+                    )}
 
                     {domainOpen && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-alabaster/60 rounded-2xl shadow-xl z-50 py-2 max-h-60 overflow-y-auto animate-in zoom-in-95 duration-200">
@@ -394,7 +398,9 @@ export default function RegistrationPage() {
                             className="w-full text-left px-4 py-2.5 text-sm font-sans hover:bg-dust/30 transition-colors flex items-center justify-between"
                           >
                             <span>{d}</span>
-                            {selectedDomain === d && <Check className="w-4 h-4 text-chestnut" />}
+                            {selectedDomain === d && (
+                              <Check className="w-4 h-4 text-chestnut" />
+                            )}
                           </button>
                         ))}
                       </div>
@@ -423,12 +429,18 @@ export default function RegistrationPage() {
                     onClick={() => setStackOpen(!stackOpen)}
                     className="w-full flex items-center justify-between px-4 py-3.5 bg-dust/20 border border-dust/60 rounded-2xl font-sans text-sm"
                   >
-                    <span className={selectedStack ? "text-stone-900" : "text-stone-400"}>
+                    <span
+                      className={
+                        selectedStack ? "text-stone-900" : "text-stone-400"
+                      }
+                    >
                       {selectedStack || "Pick a technology..."}
                     </span>
                     <ChevronDown className="w-4 h-4 text-stone-400" />
                   </button>
-                  {errors.stack && <FieldError message={errors.stack.message} />}
+                  {errors.stack && (
+                    <FieldError message={errors.stack.message} />
+                  )}
 
                   {stackOpen && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-alabaster/60 rounded-2xl shadow-xl z-50 p-2 animate-in zoom-in-95 duration-200">
@@ -447,19 +459,27 @@ export default function RegistrationPage() {
                           </p>
                         ) : (
                           stackOptions
-                            .filter((s) => s.toLowerCase().includes(stackSearch.toLowerCase()))
+                            .filter((s) =>
+                              s
+                                .toLowerCase()
+                                .includes(stackSearch.toLowerCase()),
+                            )
                             .map((s) => (
                               <button
                                 key={s}
                                 type="button"
                                 onClick={() => {
-                                  setValue("stack", s, { shouldValidate: true });
+                                  setValue("stack", s, {
+                                    shouldValidate: true,
+                                  });
                                   setStackOpen(false);
                                 }}
                                 className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-dust/30 rounded-lg transition-colors text-left"
                               >
                                 <span className="text-sm font-sans">{s}</span>
-                                {selectedStack === s && <Check className="w-4 h-4 text-chestnut" />}
+                                {selectedStack === s && (
+                                  <Check className="w-4 h-4 text-chestnut" />
+                                )}
                               </button>
                             ))
                         )}
@@ -484,15 +504,21 @@ export default function RegistrationPage() {
                     <button
                       key={r.label}
                       type="button"
-                      onClick={() => setValue("role", r.label, { shouldValidate: true })}
+                      onClick={() =>
+                        setValue("role", r.label, { shouldValidate: true })
+                      }
                       className={`flex flex-col items-start p-4 rounded-2xl border text-left transition-all ${
                         selectedRole === r.label
                           ? "border-chestnut bg-dust/30 ring-1 ring-chestnut"
                           : "border-alabaster/60 bg-white hover:border-dust"
                       }`}
                     >
-                      <span className="text-sm font-sans font-medium text-stone-900">{r.label}</span>
-                      <span className="text-xs font-sans text-stone-400 mt-0.5">{r.sub}</span>
+                      <span className="text-sm font-sans font-medium text-stone-900">
+                        {r.label}
+                      </span>
+                      <span className="text-xs font-sans text-stone-400 mt-0.5">
+                        {r.sub}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -542,7 +568,11 @@ export default function RegistrationPage() {
                 className="flex items-center gap-2 px-8 py-4 rounded-2xl font-sans font-bold text-sm transition-all bg-stone-900 text-white hover:bg-chestnut hover:scale-[1.02] shadow-lg shadow-dust"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? "Analyzing..." : step === 2 ? "Generate Test →" : "Continue →"}
+                {loading
+                  ? "Analyzing..."
+                  : step === 2
+                    ? "Generate Test →"
+                    : "Continue →"}
               </button>
             ) : (
               <button
@@ -551,7 +581,11 @@ export default function RegistrationPage() {
                 className="w-full bg-chestnut text-white py-4 rounded-2xl font-sans font-bold hover:bg-chestnut/90 transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={handleSubmit(handleFinalSubmit)}
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Start Assessment"}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                ) : (
+                  "Start Assessment"
+                )}
               </button>
             )}
           </div>

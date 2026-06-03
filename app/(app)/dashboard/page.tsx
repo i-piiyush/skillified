@@ -199,7 +199,11 @@ export default function DashboardPage() {
                   </div>
                   <div className="p-2">
                     <button
-                      onClick={() => authClient.signOut()}
+                      onClick={() => {
+                        authClient.signOut()
+                        router.replace("/login")
+                      
+                      }}
                       className="w-full flex items-center gap-2 text-left text-sm px-3 py-2.5 rounded-xl text-[var(--color-chestnut)] hover:bg-[#F7F6F3] transition-colors font-semibold uppercase tracking-wider text-[10px]"
                     >
                       <LogOut size={14} />
