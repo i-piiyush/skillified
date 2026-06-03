@@ -43,7 +43,7 @@ const ROLES = [
   { label: "SDE3", sub: "5+ years experience" },
 ];
 
-const DOMAINS = [
+export const DOMAINS = [
   "Web Development",
   "Mobile Development",
   "Data Science",
@@ -58,7 +58,7 @@ const DOMAINS = [
 
 // Step fields matching your existing schema keys
 const STEP_FIELDS: Record<number, (keyof SignUpFormData)[]> = {
-  0: ["name", "email", "password", "domain"],
+  0: ["name", "email", "domain"],
   1: ["stack"],
   2: ["role"],
 };
@@ -154,13 +154,6 @@ function parseAxiosError(error: unknown): string {
   return "An unknown error occurred.";
 }
 
-function parseAuthError(message: string | undefined): string {
-  if (!message) return "Authentication failed. Please try again.";
-  const lower = message.toLowerCase();
-  if (lower.includes("email") && lower.includes("exist"))
-    return "This email is already registered. Try signing in instead.";
-  return message;
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -194,7 +187,6 @@ export default function RegistrationPage() {
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       domain: "",
       stack: "",
       role: "",
@@ -204,10 +196,10 @@ export default function RegistrationPage() {
   const selectedDomain = watch("domain") || "";
   const selectedStack = watch("stack") || "";
   const selectedRole = watch("role") || "";
-  const [nameValue, emailValue, passwordValue] = watch([
+  const [nameValue, emailValue] = watch([
     "name",
     "email",
-    "password",
+  
   ]);
 
   useEffect(() => {
@@ -247,32 +239,6 @@ export default function RegistrationPage() {
     }
   };
 
-  const submitUser = async (): Promise<boolean> => {
-    setStepError(null);
-    try {
-      const { data, error } = await authClient.signUp.email({
-        name: nameValue.trim(),
-        email: emailValue.trim(),
-        password: passwordValue,
-      });
-
-      if (error) {
-        const message = parseAuthError(error.message);
-        if (error.message?.toLowerCase().includes("email")) {
-          setError("email", { message });
-          setStep(0); 
-        }
-        setStepError(message);
-        addToast("error", "Account creation failed", message);
-        return false;
-      }
-      addToast("success", "User created!", "Account registered successfully.");
-      return true;
-    } catch (error) {
-      setStepError("Unexpected error while creating your account.");
-      return false;
-    }
-  };
 
   const startTest = async (): Promise<boolean> => {
     try {
@@ -294,6 +260,7 @@ export default function RegistrationPage() {
   const handleNext = async () => {
     setStepError(null);
     const fields = STEP_FIELDS[step];
+    console.log(fields)
     
     if (fields) {
       const isValid = await trigger(fields);
@@ -311,15 +278,8 @@ export default function RegistrationPage() {
   };
 
   const handleFinalSubmit = async () => {
-    setLoading(true);
-    const userCreated = await submitUser();
+   
     
-    if (!userCreated) {
-      setLoading(false);
-      return; 
-    }
-
-    setLoading(false);
     setIsGeneratingTest(true);
 
     try {
@@ -397,15 +357,7 @@ export default function RegistrationPage() {
                     />
                     {errors.email && <FieldError message={errors.email.message} />}
                   </div>
-                  <div>
-                    <Input
-                      label="Password"
-                      type="password"
-                      placeholder="••••••••"
-                      register={register("password")}
-                    />
-                    {errors.password && <FieldError message={errors.password.message} />}
-                  </div>
+                 
 
                   {/* Domain Dropdown */}
                   <div className="relative" ref={domainRef}>
@@ -491,7 +443,7 @@ export default function RegistrationPage() {
                           s.toLowerCase().includes(stackSearch.toLowerCase()),
                         ).length === 0 ? (
                           <p className="text-center text-xs text-stone-400 font-sans py-4">
-                            No results for "{stackSearch}"
+                            No results for &quot;{stackSearch}&quot;
                           </p>
                         ) : (
                           stackOptions

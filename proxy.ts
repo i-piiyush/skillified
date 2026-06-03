@@ -11,8 +11,6 @@ export const proxy = (request: NextRequest) => {
     "/api/onboard-user",
     "/api/auth",
     "/api/save-n8n-data",
-    "/api/roadmap/generate-question",
-    "/api/roadmap/generate-roadmap"
   ];
   const isPublicApi = publicApis.some((route) => path.startsWith(route));
 

@@ -2,14 +2,19 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ArrowRight, Sparkles } from "lucide-react";
+import { Check, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
+import { DOMAINS } from "../assesment/page";
+import axios from "axios";
+import { Question } from "@/types/question";
+import { useRouter } from "next/navigation";
 
-const questions = [
-  { id: "domain", text: "Yo, what are we cooking today? Which field are you grinding in?", options: ["Frontend", "Backend", "Fullstack", "DevOps", "AI/ML"] },
-  { id: "goal", text: "Dope. What's the main mission? Trying to land a job or just building for the vibes?", options: ["Land a job", "Building a project", "Upskilling", "Just exploring"] },
-  { id: "background", text: "Got it. What's your current situation? Uni life or self-taught grind?", options: ["Uni student", "Self-taught", "Bootcamp", "Working pro"] },
-  { id: "years", text: "How long you been at it? Be real.", options: ["0-6 months", "6-12 months", "1-2 years", "2+ years"] },
-  { id: "pain", text: "Last one—where do you keep fumbling? What's your biggest blocker?", options: ["Consistency", "System design", "Auth/Security", "Deploying", "Database"] },
+const INITIALQUESTIONS = [
+  { id: "domain", text: "Yo, what are we cooking today? Which field are you grinding in?", options: DOMAINS },
+  { id: "goal", text: "Dope. What's the main mission? Trying to land a job or just building for the vibes?", options: ["Internship", "SDE 1", "SDE 2", "SDE 3"] },
+  { id: "targetCompany", text: "So which type of company are you actually tryna crack?", options: ["Product based", "Product based startup", "Service based", "MAANG/FAANG level"] },
+  // UPDATED IDs here to match backend JSON expectation:
+  { id: "focusStudyHours", text: "How much time you can give in a day (for studying obv)", options: ["0-1 hours", "2-3 hours", "3-4 hours"] },
+  { id: "academicStatus", text: "Whats your actual acadamic status?", options: ["High school", "Undergraduate", "Postgraduate"] },
 ];
 
 const TypingIndicator = () => (
@@ -29,22 +34,73 @@ export default function RoadmapOnboarding() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isTyping, setIsTyping] = useState(false);
+  const [printedJson, setPrintedJson] = useState<string | null>(null);
+  const [questions,setQuestions] = useState(INITIALQUESTIONS);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const router = useRouter()
+
+  const MAX_QUESTIONS = 9;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [step, isTyping]);
+  }, [step, isTyping, printedJson]);
 
-  const handleSelect = (option: string) => {
-    setAnswers((prev) => ({ ...prev, [questions[step].id]: option }));
+  const handleSelect = async (option: string) => {
+    const updatedAnswers = { ...answers, [questions[step].id]: option };
+    setAnswers(updatedAnswers);
     
     if (step < questions.length - 1) {
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
         setStep(step + 1);
-      }, 800); // 800ms of "typing" before next question
+      }, 800);
+    } else if(questions.length < MAX_QUESTIONS) {
+      setIsTyping(true);
+      try {
+        const res = await axios.post("/api/roadmap/generate-question",{updatedAnswers});
+        const fetchedQuestion:Question = res.data.question;
+        
+        setQuestions((prev)=>[...questions,{
+          id: fetchedQuestion.jsonKey,
+          text: fetchedQuestion.question,
+          options: fetchedQuestion.options
+        }]);
+        setStep(step + 1);
+        
+      } catch (error) {
+        console.error("Failed to pull next question", error);
+      } finally {
+        setIsTyping(false);
+      }
     }
+  };
+
+  const handleGenerate = async () => {
+    
+    console.log("Final Output:", answers);
+
+    try {
+      const res = await axios.post("/api/roadmap/generate-roadmap",{
+        answers
+      })
+
+      if(res.data.success){
+        console.log(res.data.message)
+        router.replace("/dashboard/roadmap")
+      }
+      
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log(error);
+      }
+    }
+    
+
+
   };
 
   return (
@@ -53,14 +109,14 @@ export default function RoadmapOnboarding() {
         
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-16">
           
-          {/* Left Column: Ultra Minimal Header */}
+          {/* Left Column */}
           <div className="md:col-span-4 relative">
             <div className="md:sticky md:top-24 space-y-3">
               <h1 className="text-2xl lg:text-3xl font-serif text-neutral-900 tracking-tight leading-tight">
-                Let's map it out.
+                Let&apos;s map it out.
               </h1>
               <p className="text-sm text-neutral-500 max-w-xs leading-relaxed">
-                Answer these few and I'll build your personal path. No fluff.
+                Answer these few and I&lsquo;ll build your personal path. No fluff.
               </p>
             </div>
           </div>
@@ -102,29 +158,50 @@ export default function RoadmapOnboarding() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15, duration: 0.3 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2 lg:pl-6"
+                      className="pl-2 lg:pl-6"
                     >
-                      {q.options.map((opt, index) => (
-                        <motion.button
-                          key={opt}
-                          whileHover={{ scale: 1.02, backgroundColor: "#FCFBFA" }}
-                          whileTap={{ scale: 0.97 }}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.2 + index * 0.05 }}
-                          onClick={() => handleSelect(opt)}
-                          className="text-left bg-white border border-[#E5E4E0] p-3.5 rounded-xl text-xs lg:text-sm font-medium text-neutral-600 flex justify-between items-center group transition-colors"
-                        >
-                          {opt}
-                          <motion.div 
-                            initial={{ opacity: 0, x: -10 }}
-                            whileHover={{ opacity: 1, x: 0 }}
-                            className="text-[var(--color-chestnut)]"
+                      {/* CONDITIONAL RENDER: Dropdown vs Grid */}
+                      {q.options.length > 5 ? (
+                        <div className="relative max-w-xs">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) handleSelect(e.target.value);
+                            }}
+                            defaultValue=""
+                            className="w-full appearance-none bg-white border border-[#E5E4E0] p-3.5 pr-10 rounded-xl text-sm font-medium text-neutral-600 focus:outline-none focus:border-chestnut hover:border-chestnut transition-colors cursor-pointer shadow-sm"
                           >
-                            <Check size={14} />
-                          </motion.div>
-                        </motion.button>
-                      ))}
+                            <option value="" disabled>Select your vibe...</option>
+                            {q.options.map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {q.options.map((opt, index) => (
+                            <motion.button
+                              key={opt}
+                              whileHover={{ scale: 1.02, backgroundColor: "#FCFBFA" }}
+                              whileTap={{ scale: 0.97 }}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.2 + index * 0.05 }}
+                              onClick={() => handleSelect(opt)}
+                              className="text-left bg-white border border-[#E5E4E0] p-3.5 rounded-xl text-xs lg:text-sm font-medium text-neutral-600 flex justify-between items-center group transition-colors"
+                            >
+                              {opt}
+                              <motion.div 
+                                initial={{ opacity: 0, x: -10 }}
+                                whileHover={{ opacity: 1, x: 0 }}
+                                className="text-chestnut"
+                              >
+                                <Check size={14} />
+                              </motion.div>
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </div>
@@ -139,30 +216,52 @@ export default function RoadmapOnboarding() {
                 )}
               </AnimatePresence>
               
-              <div ref={endRef} className="h-4" />
             </div>
 
-            {/* Final Generation CTA */}
+            {/* Final Generation CTA & JSON Output */}
             <AnimatePresence>
               {step === questions.length - 1 && answers[questions[step].id] && !isTyping && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, type: "spring", stiffness: 200, damping: 20 }}
-                  className="pt-12 mt-6 flex justify-end"
+                  className="pt-12 mt-6 flex flex-col items-end gap-6"
                 >
-                  <motion.button 
-                    whileHover={{ scale: 1.03, boxShadow: "0px 10px 30px -10px rgba(140, 39, 30, 0.4)" }}
-                    whileTap={{ scale: 0.96 }}
-                    className="inline-flex items-center gap-2.5 bg-[var(--color-chestnut)] text-white px-6 py-3.5 rounded-2xl font-medium text-sm transition-colors"
-                  >
-                    <Sparkles size={16} />
-                    Generate my roadmap
-                    <ArrowRight size={16} className="ml-1" />
-                  </motion.button>
+                  {/* Generate Button */}
+                  {!printedJson && (
+                    <motion.button 
+                      onClick={handleGenerate}
+                      whileHover={{ scale: 1.03, boxShadow: "0px 10px 30px -10px rgba(140, 39, 30, 0.4)" }}
+                      whileTap={{ scale: 0.96 }}
+                      className="inline-flex items-center gap-2.5 bg-[var(--color-chestnut)] text-white px-6 py-3.5 rounded-2xl font-medium text-sm transition-colors"
+                    >
+                      <Sparkles size={16} />
+                      Generate my roadmap
+                      <ArrowRight size={16} className="ml-1" />
+                    </motion.button>
+                  )}
+
+                  {/* Printed JSON Output Block */}
+                  {printedJson && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="w-full bg-[#1A1918] p-6 rounded-2xl shadow-xl border border-neutral-800"
+                    >
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xs font-medium text-neutral-400 uppercase tracking-widest">Payload Ready</span>
+                        <Check size={16} className="text-emerald-400" />
+                      </div>
+                      <pre className="text-sm font-mono text-emerald-300 whitespace-pre-wrap break-words">
+                        {printedJson}
+                      </pre>
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
+
+            <div ref={endRef} className="h-4 mt-8" />
           </div>
 
         </div>

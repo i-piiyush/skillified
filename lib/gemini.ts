@@ -679,8 +679,8 @@ Good Example:
     "never touched it",
     "followed tutorials",
     "built small projects",
-    "built complete apps",
-    "comfortable using it"
+    "built complete apps"
+    
   ],
   "jsonKey": "reactLevel"
 }
@@ -693,8 +693,8 @@ Good Example:
     "javascript",
     "react",
     "backend",
-    "databases",
-    "dsa"
+    "databases"
+
   ],
   "jsonKey": "knowledgeGap"
 }

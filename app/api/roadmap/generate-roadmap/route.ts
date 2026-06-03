@@ -18,7 +18,7 @@ export const POST = async (req: Request) => {
       return NextResponse.json(
         {
           success: false,
-          message: "request body can't be empty",
+          message: "invalid request body can't be empty",
         },
         { status: 400 },
       );
