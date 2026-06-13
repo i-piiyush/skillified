@@ -1,33 +1,40 @@
+
 "use client";
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Mail, Lock, AlertCircle } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { createAuthClient } from "better-auth/react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+} from "@/components/ui/field";
+
 // ─── Zod Schema ──────────────────────────────────────────────────────────────
+
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
-  password: z.string().min(1, "Password is required."), // Just checking if it's not empty for login
+  password: z.string().min(1, "Password is required."),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-const Page = () => {
+export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+
   const authClient = createAuthClient();
   const router = useRouter();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
+  const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
@@ -35,25 +42,28 @@ const Page = () => {
     },
   });
 
-  const onSubmit = async (login_data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+
     try {
-      // Add your email/password login logic here
-      console.log("Login Data:", login_data);
-      const { data, error } = await authClient.signIn.email(
+      const { error } = await authClient.signIn.email(
         {
-          email: login_data.email,
-          password: login_data.password,
+          email: data.email,
+          password: data.password,
         },
         {
           onSuccess: () => {
             router.replace("/dashboard");
           },
           onError: (ctx) => {
-            console.log(ctx.error.message);
+            console.error(ctx.error.message);
           },
-        },
+        }
       );
+
+      if (error) {
+        console.error("Login error:", error);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -62,7 +72,6 @@ const Page = () => {
   };
 
   const handleGoogleAuth = async () => {
-    console.log("Trigger Google Auth");
     try {
       await authClient.signIn.social({
         provider: "google",
@@ -74,34 +83,42 @@ const Page = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3] flex items-center justify-center p-6 font-serif selection:bg-[#D8DDDE] selection:text-[var(--color-chestnut,#8C271E)] relative">
+    <div className="min-h-screen bg-black text-zinc-300 font-sans flex items-center justify-center p-6 selection:bg-white selection:text-black relative">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_40%)]" />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="w-full max-w-md bg-white p-10 md:p-12 rounded-[32px] shadow-xl border border-[#E5E4E0] relative z-10"
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md bg-[#050505] p-8 sm:p-10 border border-zinc-800 rounded-xl relative z-10 shadow-2xl"
       >
         {/* Header */}
-        <div className="space-y-2 mb-10 text-center">
-          <p className="text-[10px] uppercase tracking-[0.2em] font-sans font-bold text-[var(--color-chestnut,#8C271E)]">
-            skillcheck.
-          </p>
-          <h1 className="text-3xl text-neutral-900 tracking-tight leading-tight">
-            Welcome back.
+        <div className="space-y-3 mb-8 text-center">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+            skillify // v2.0
+          </div>
+
+          <h1 className="text-3xl text-white font-medium tracking-tighter">
+            Resume Session
           </h1>
-          <p className="text-sm font-sans text-neutral-500">
-            Ready to lock in? Let&apos;s pick up where you left off.
+
+          <p className="text-sm text-zinc-400">
+            Drop back into the meta. Your roadmap is waiting.
           </p>
         </div>
 
-        {/* Google OAuth Button */}
-        <button
+        {/* Google OAuth */}
+        <Button
           type="button"
+          variant="outline"
           onClick={handleGoogleAuth}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-[#CFCBCA] text-neutral-800 px-4 py-3.5 rounded-2xl font-sans font-medium text-sm hover:bg-[#F7F6F3] hover:border-neutral-400 transition-all focus:outline-none focus:ring-4 focus:ring-neutral-100"
+          className="w-full h-11 bg-transparent border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white rounded-md font-medium transition-colors"
         >
           <svg
-            className="w-5 h-5"
+            className="w-4 h-4 mr-2"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -123,110 +140,115 @@ const Page = () => {
               fill="#EA4335"
             />
           </svg>
-          Continue with Google
-        </button>
+
+          Auth via Google
+        </Button>
 
         {/* Divider */}
-        <div className="flex items-center gap-4 my-8">
-          <div className="h-px bg-[#E5E4E0] flex-1" />
-          <span className="text-[10px] font-sans text-neutral-400 uppercase tracking-widest font-bold">
-            Or use email
+        <div className="flex items-center gap-4 my-6">
+          <div className="h-px bg-zinc-900 flex-1" />
+          <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-widest">
+            or execute manual
           </span>
-          <div className="h-px bg-[#E5E4E0] flex-1" />
+          <div className="h-px bg-zinc-900 flex-1" />
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Email Field */}
-          <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-sans font-bold text-[var(--color-chestnut,#8C271E)]">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
-              <input
-                type="email"
-                placeholder="piyush@example.com"
-                {...register("email")}
-                className={`w-full pl-11 pr-4 py-3.5 bg-[#F7F6F3] border rounded-2xl font-sans text-sm text-neutral-900 focus:outline-none focus:ring-4 transition-all placeholder:text-neutral-400 ${
-                  errors.email
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                    : "border-[#CFCBCA] focus:border-[var(--color-chestnut,#8C271E)] focus:ring-[var(--color-chestnut,#8C271E)]/10"
-                }`}
-              />
-            </div>
-            {errors.email && (
-              <p className="flex items-center gap-1.5 text-red-500 text-xs font-sans mt-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.email.message}
-              </p>
-            )}
-          </div>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-5"
+        >
+          <Controller
+            name="email"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel className="text-xs text-zinc-400 font-medium">
+                  Comms // Email
+                </FieldLabel>
 
-          {/* Password Field */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-widest font-sans font-bold text-[var(--color-chestnut,#8C271E)]">
-                Password
-              </label>
-              <a
-                href="/forgot-password"
-                className="text-[10px] font-sans font-bold text-neutral-500 hover:text-[var(--color-chestnut,#8C271E)] transition-colors"
-              >
-                Forgot?
-              </a>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
-              <input
-                type="password"
-                placeholder="••••••••"
-                {...register("password")}
-                className={`w-full pl-11 pr-4 py-3.5 bg-[#F7F6F3] border rounded-2xl font-sans text-sm text-neutral-900 focus:outline-none focus:ring-4 transition-all placeholder:text-neutral-400 ${
-                  errors.password
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                    : "border-[#CFCBCA] focus:border-[var(--color-chestnut,#8C271E)] focus:ring-[var(--color-chestnut,#8C271E)]/10"
-                }`}
-              />
-            </div>
-            {errors.password && (
-              <p className="flex items-center gap-1.5 text-red-500 text-xs font-sans mt-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.password.message}
-              </p>
-            )}
-          </div>
+                <Input
+                  {...field}
+                  type="email"
+                  placeholder="piyush@example.com"
+                  aria-invalid={fieldState.invalid}
+                  className="h-11 bg-transparent border-zinc-800 text-white placeholder:text-zinc-700 rounded-md focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:border-transparent transition-all"
+                />
 
-          <motion.button
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
+                {fieldState.error && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+
+          <Controller
+            name="password"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <div className="flex items-center justify-between">
+                  <FieldLabel className="text-xs text-zinc-400 font-medium">
+                    Security Key // Password
+                  </FieldLabel>
+
+                  <a
+                    href="/forgot-password"
+                    className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
+                    tabIndex={-1}
+                  >
+                    Lost Access?
+                  </a>
+                </div>
+
+                <Input
+                  {...field}
+                  type="password"
+                  placeholder="••••••••"
+                  aria-invalid={fieldState.invalid}
+                  className="h-11 bg-transparent border-zinc-800 text-white placeholder:text-zinc-700 rounded-md focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:border-transparent transition-all"
+                />
+
+                {fieldState.error && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+
+          <Button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-[#1A1918] text-white py-4 mt-2 rounded-2xl font-sans font-bold text-sm hover:bg-black transition-all shadow-lg shadow-neutral-900/10 disabled:opacity-70"
+            className="w-full h-11 mt-2 bg-white text-black hover:bg-zinc-200 rounded-md font-medium transition-colors"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span className="font-mono text-[10px] uppercase tracking-widest">
+                  Authenticating...
+                </span>
+              </>
             ) : (
               <>
-                Log in
-                <ArrowRight className="w-4 h-4" />
+                Lock In
+                <ArrowRight className="ml-2 w-4 h-4" />
               </>
             )}
-          </motion.button>
+          </Button>
         </form>
 
-        <p className="text-center text-xs font-sans text-neutral-500 mt-8">
-          Don't have an account?{" "}
+        {/* Footer */}
+        <p className="text-center text-sm text-zinc-500 mt-8">
+          Not in the system?{" "}
           <a
             href="/signup"
-            className="font-bold text-neutral-900 hover:text-[var(--color-chestnut,#8C271E)] transition-colors"
+            className="font-medium text-zinc-300 hover:text-white transition-colors"
           >
-            Sign up
+            Initialize Profile.
           </a>
         </p>
       </motion.div>
     </div>
   );
-};
+}
 
-export default Page;
