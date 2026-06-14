@@ -7,8 +7,7 @@ export const proxy = (request: NextRequest) => {
   const path = request.nextUrl.pathname;
 
   const publicApis = [
-    "/api/generate-stack",
-    "/api/onboard-user",
+   
     "/api/auth",
     "/api/save-n8n-data",
   ];
@@ -23,7 +22,7 @@ export const proxy = (request: NextRequest) => {
     }
   }
 
-  const protectedRoutes = ["/test", "/dashboard"];
+  const protectedRoutes = ["/test", "/dashboard","/onboarding"];
   const isProtectedRoute = protectedRoutes.some((route) =>
     path.startsWith(route),
   );

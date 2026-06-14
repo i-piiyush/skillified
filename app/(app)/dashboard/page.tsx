@@ -13,30 +13,18 @@ import {
   RefreshCcw, 
   AlertCircle, 
   ChevronDown, 
-  Map, 
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  TerminalSquare,
+  Map,
+  Activity
 } from "lucide-react";
 
-// Types matching your Prisma Schema
-type TopResource = {
-  id: string;
-  type: string;
-  title: string;
-  url: string;
-  source: string;
-  whyChosen: string;
-  weakTopicId: string;
-};
+// Shadcn UI
+import { Button } from "@/components/ui/button";
+import { WeakTopic } from "@/types/weakTopic";
+import Loader from "@/components/ui/Loader";
 
-type WeakTopic = {
-  id: string;
-  topic: string;
-  whyYouNeedToStudyThis: string;
-  createdAt: string;
-  userId: string;
-  topResource?: TopResource;
-};
 
 const formatTopicLabel = (slug: string) =>
   slug
@@ -44,17 +32,17 @@ const formatTopicLabel = (slug: string) =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
-const SkeletonCard = ({ delay = 0 }: { delay?: number }) => (
+const SkeletonLog = ({ delay = 0 }: { delay?: number }) => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     transition={{ delay, duration: 0.4 }}
-    className="rounded-2xl border border-[#E5E4E0] bg-[#F7F6F3] p-6 space-y-4"
+    className="border border-zinc-800 bg-[#050505] p-5 space-y-4 rounded-md"
   >
     <div className="space-y-3">
-      <div className="h-6 w-3/4 rounded bg-[#E5E4E0] animate-pulse" />
-      <div className="h-4 w-full rounded bg-[#E5E4E0] animate-pulse" />
-      <div className="h-4 w-4/5 rounded bg-[#E5E4E0] animate-pulse" />
+      <div className="h-5 w-1/3 bg-zinc-900 animate-pulse rounded-sm" />
+      <div className="h-3 w-full bg-zinc-900 animate-pulse rounded-sm" />
+      <div className="h-3 w-4/5 bg-zinc-900 animate-pulse rounded-sm" />
     </div>
   </motion.div>
 );
@@ -65,61 +53,67 @@ const TopicCard = ({ topic, delay }: { topic: WeakTopic; delay: number }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="rounded-2xl border border-[#E5E4E0] bg-[#F7F6F3] overflow-hidden transition-all hover:border-[#D1CEC7]"
+      transition={{ delay, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="border border-zinc-800 bg-[#050505] overflow-hidden transition-colors hover:border-zinc-700 rounded-md"
     >
       <div 
-        className="p-6 cursor-pointer flex flex-col gap-3"
+        className="p-5 cursor-pointer flex flex-col gap-3 group"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex justify-between items-start gap-4">
-          <h3 className="text-xl font-serif text-neutral-900 tracking-tight leading-snug">
-            {formatTopicLabel(topic.topic)}
-          </h3>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[10px] text-red-400 uppercase tracking-widest bg-red-400/10 px-2 py-0.5 rounded-sm border border-red-400/20">
+              Vulnerability
+            </span>
+            <h3 className="text-base font-medium text-zinc-200 tracking-tight group-hover:text-white transition-colors">
+              {formatTopicLabel(topic.topic)}
+            </h3>
+          </div>
           <motion.div
             animate={{ rotate: isOpen ? 180 : 0 }}
-            className="text-neutral-400 mt-1 shrink-0"
+            className="text-zinc-600 mt-0.5 shrink-0"
           >
-            <ChevronDown size={20} />
+            <ChevronDown size={16} />
           </motion.div>
         </div>
-        <p className="text-sm font-sans text-neutral-600 leading-relaxed">
+        <p className="text-sm font-sans text-zinc-500 leading-relaxed pl-1">
           {topic.whyYouNeedToStudyThis}
         </p>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isOpen && resource && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-[#E5E4E0] bg-[#FDFDFC]"
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="border-t border-zinc-900 bg-black"
           >
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-chestnut)]">
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
                 {resource.type.toLowerCase() === "video" ? (
-                  <Video size={14} />
+                  <Video size={14} className="text-zinc-400" />
                 ) : (
-                  <BookOpen size={14} />
+                  <BookOpen size={14} className="text-zinc-400" />
                 )}
-                <span>curated drop: {resource.source}</span>
+                <span>Target Resource // {resource.source}</span>
               </div>
               
-              <div className="space-y-3 font-sans">
+              <div className="space-y-2 border-l border-zinc-800 pl-4">
                 <a 
                   href={resource.url} 
                   target="_blank" 
                   rel="noreferrer"
-                  className="group flex items-start gap-2 text-base font-medium text-neutral-900 hover:text-[var(--color-chestnut)] transition-colors"
+                  className="group flex items-start gap-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors"
                 >
                   {resource.title}
-                  <ExternalLink size={16} className="mt-0.5 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <ExternalLink size={14} className="mt-0.5 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
                 </a>
-                <p className="text-sm text-neutral-500 italic">
-                  "{resource.whyChosen}"
+                <p className="text-xs text-zinc-600 font-mono">
+                   {resource.whyChosen.toLowerCase()}
                 </p>
               </div>
             </div>
@@ -141,6 +135,7 @@ export default function DashboardPage() {
 
   const userName = session?.user?.name ?? "";
   const userEmail = session?.user?.email ?? "";
+  const userAlias = userName.split(" ")[0].toLowerCase() || "user";
   
   const fetchWeakTopics = async () => {
     if (!session?.user?.id) return;
@@ -164,24 +159,32 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPending]);
 
+  if(isPending){
+    return <Loader />
+  }
+
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-[#E5E4E0]">
+    <div className="min-h-screen bg-black text-zinc-300 font-sans selection:bg-white selection:text-black relative">
       
-      {/* Section 1: Header / Nav */}
-      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-[#E5E4E0]">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="text-sm font-bold uppercase tracking-[0.2em] text-neutral-900">
-            skillify.
+      {/* Subtle Background Elements */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.02),transparent_40%)]" />
+      </div>
+
+      {/* Nav */}
+      <nav className="sticky top-0 z-40 bg-black/50 backdrop-blur-md border-b border-zinc-900">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="text-sm font-medium tracking-tight text-white flex items-center gap-2">
+            <TerminalSquare size={18} className="text-zinc-500" />
+            skillify // terminal
           </div>
 
           <div className="relative z-50">
             <button
               onClick={() => setProfileOpen((p) => !p)}
-              className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+              className="flex items-center justify-center h-8 w-8 rounded-sm bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
             >
-              <div className="h-9 w-9 rounded-full bg-[#1A1918] flex items-center justify-center text-white">
-                <User size={16} />
-              </div>
+              <User size={14} />
             </button>
 
             <AnimatePresence>
@@ -190,24 +193,23 @@ export default function DashboardPage() {
                   initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute right-0 mt-3 w-64 bg-white border border-[#E5E4E0] shadow-xl rounded-2xl overflow-hidden"
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute right-0 mt-2 w-56 bg-[#050505] border border-zinc-800 shadow-2xl rounded-md overflow-hidden"
                 >
-                  <div className="px-5 py-4 border-b border-[#E5E4E0]">
-                    <p className="text-sm font-bold text-neutral-900 truncate">{userName}</p>
-                    <p className="text-xs font-medium text-neutral-500 mt-1 truncate">{userEmail}</p>
+                  <div className="px-4 py-3 border-b border-zinc-900">
+                    <p className="text-sm font-medium text-white truncate">{userName}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5 font-mono truncate">{userEmail}</p>
                   </div>
-                  <div className="p-2">
+                  <div className="p-1">
                     <button
                       onClick={() => {
-                        authClient.signOut()
-                        router.replace("/login")
-                      
+                        authClient.signOut();
+                        router.replace("/login");
                       }}
-                      className="w-full flex items-center gap-2 text-left text-sm px-3 py-2.5 rounded-xl text-[var(--color-chestnut)] hover:bg-[#F7F6F3] transition-colors font-semibold uppercase tracking-wider text-[10px]"
+                      className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-sm text-red-400 hover:bg-zinc-900 transition-colors font-mono uppercase tracking-widest text-[10px]"
                     >
-                      <LogOut size={14} />
-                      bail out
+                      <LogOut size={12} />
+                      Terminate Session
                     </button>
                   </div>
                 </motion.div>
@@ -217,103 +219,154 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* Main Content Area */}
-      <main className="max-w-6xl mx-auto px-6 py-12 space-y-16">
+      {/* Main Layout Grid */}
+      <main className="max-w-7xl mx-auto px-6 py-12 relative z-10 grid lg:grid-cols-12 gap-12 lg:gap-8">
         
-        {/* Hero */}
-        <header className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-chestnut)]">
-            dashboard — overview
-          </p>
-          <h1 className="text-4xl sm:text-5xl font-serif text-neutral-900 tracking-tight">
-            time to lock in, {userName.split(" ")[0].toLowerCase()}.
-          </h1>
-          <p className="text-base text-neutral-500 font-sans max-w-md">
-            the backend cooked. here are the concepts you fumbled.
-          </p>
-        </header>
-
-        {/* Section 2: Data Flow */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between pb-2">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--color-chestnut)]">
-              your flop era
-            </h2>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 bg-[#F7F6F3] px-3 py-1 rounded-full">
-              {loading ? "syncing..." : `${weakTopics.length} spots`}
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <SkeletonCard key={i} delay={i * 0.1} />
-              ))}
+        {/* Left Column: Telemetry / Weak Topics */}
+        <div className="lg:col-span-8 space-y-8">
+          <header className="space-y-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
+              System Status: Online
             </div>
-          ) : error ? (
-            <div className="rounded-2xl border border-red-100 bg-[#FFF9F9] p-8 text-center space-y-4">
-              <AlertCircle className="mx-auto text-[var(--color-chestnut)]" size={32} />
-              <div>
-                <h3 className="font-serif text-2xl text-neutral-900 tracking-tight">vibe check failed</h3>
-                <p className="text-sm text-neutral-600 mt-2 font-sans">
-                  could not pull your data from the server. n8n might be sleeping.
-                </p>
-              </div>
-              <button
-                onClick={fetchWeakTopics}
-                className="inline-flex items-center gap-2 bg-[#1A1918] text-white px-6 py-3 rounded-2xl text-sm font-sans font-medium hover:opacity-90 transition-opacity mt-2"
-              >
-                <RefreshCcw size={16} />
-                force retry
-              </button>
-            </div>
-          ) : weakTopics.length === 0 ? (
-            <div className="rounded-2xl border border-[#E5E4E0] bg-[#F7F6F3] p-12 text-center text-neutral-500 font-serif text-xl">
-              massive W. you have no weak spots currently.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {weakTopics.map((topic, i) => (
-                <TopicCard key={topic.id} topic={topic} delay={i * 0.1} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Divider */}
-        <div className="w-full h-px bg-[#E5E4E0]" />
-
-        {/* Section 3: Roadmap & Actions */}
-        <section className="space-y-8 pb-12">
-          <div className="space-y-3">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--color-chestnut)]">
-              next steps
-            </h2>
-            <h3 className="text-3xl font-serif text-neutral-900 tracking-tight">
-              bored? let's build something real.
-            </h3>
-            <p className="text-sm text-neutral-500 font-sans max-w-md">
-              answer a few quick questions and generate a personalized learning roadmap. strictly Ws from here on out.
+            <h1 className="text-4xl sm:text-5xl font-medium text-white tracking-tighter">
+              Welcome back, {userAlias}.
+            </h1>
+            <p className="text-sm text-zinc-400 max-w-lg leading-relaxed">
+              The backend finished compiling your results. Below are the structural vulnerabilities detected during your last run.
             </p>
-          </div>
+          </header>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-            <button
-              onClick={() => router.push('/onboard/create-roadmap')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#1A1918] text-white px-8 py-3.5 rounded-[16px] font-sans font-medium text-sm hover:bg-black transition-colors"
-            >
-              Map it out &rarr;
-            </button>
-            
-            <button
-              onClick={() => router.push('/test')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#F7F6F3] border border-[#E5E4E0] text-neutral-900 px-8 py-3.5 rounded-[16px] font-sans font-medium text-sm hover:bg-[#F0EFEA] transition-colors"
-            >
-              <RotateCcw size={16} />
-              Run it back
-            </button>
+          <div className="pt-4 border-t border-zinc-900">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                Telemetry // Logs
+              </h2>
+              <span className="font-mono text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-sm">
+                {loading ? "SYNCING..." : `${weakTopics.length} RECORDS`}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {loading ? (
+                <>
+                  <SkeletonLog delay={0} />
+                  <SkeletonLog delay={0.1} />
+                  <SkeletonLog delay={0.2} />
+                </>
+              ) : error ? (
+                <div className="border border-red-900/50 bg-red-950/10 p-8 rounded-md text-center space-y-4">
+                  <AlertCircle className="mx-auto text-red-500" size={24} />
+                  <div>
+                    <h3 className="text-lg font-medium text-white tracking-tight">Sync Failure</h3>
+                    <p className="text-sm text-zinc-400 mt-1">
+                      Unable to pull telemetry data. The server might be down.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={fetchWeakTopics}
+                    className="mt-2 bg-transparent border-zinc-800 text-white hover:bg-zinc-900 rounded-sm h-9"
+                  >
+                    <RefreshCcw size={14} className="mr-2" />
+                    Force Retry
+                  </Button>
+                </div>
+              ) : weakTopics.length === 0 ? (
+                <div className="border border-zinc-800 bg-[#050505] p-12 rounded-md text-center">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 mb-4">
+                    <Activity className="h-5 w-5 text-zinc-500" />
+                  </div>
+                  <h3 className="text-lg font-medium text-white tracking-tight">Zero vulnerabilities.</h3>
+                  <p className="text-sm text-zinc-500 mt-1 max-w-sm mx-auto">
+                    No weak spots detected yet. Run a diagnostic test to populate your telemetry logs.
+                  </p>
+                </div>
+              ) : (
+                weakTopics.map((topic, i) => (
+                  <TopicCard key={topic.id} topic={topic} delay={i * 0.05} />
+                ))
+              )}
+            </div>
           </div>
-        </section>
+        </div>
+
+        {/* Right Column: Execution / Actions */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="sticky top-24 space-y-6">
+            
+            {/* Action Center Header */}
+            <div>
+              <h2 className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-4">
+                Execution // Commands
+              </h2>
+              <div className="border border-zinc-800 bg-[#050505] p-6 rounded-md space-y-6">
+                
+                {/* Diagnostic Test Box */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                      <Activity size={14} className="text-zinc-400" />
+                      Adaptive Diagnostic
+                    </h3>
+                    <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+                      Take or retake the assessment to calibrate your skill gaps in real-time. Unlimited runs allowed.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => router.push('/test')}
+                    variant="outline"
+                    className="w-full justify-start h-10 bg-transparent border-zinc-800 text-white hover:bg-white hover:text-black rounded-sm transition-all"
+                  >
+                    <RotateCcw size={14} className="mr-2" />
+                    Run Diagnostic
+                  </Button>
+                </div>
+
+                <div className="h-px bg-zinc-900 w-full" />
+
+                {/* Roadmap Box */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                      <Map size={14} className="text-zinc-400" />
+                      Pathing Engine
+                    </h3>
+                    <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+                      Generate a new progression sequence from scratch or view your currently active roadmap.
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Button
+                      onClick={() => router.push('/onboard/create-roadmap')}
+                      className="w-full justify-start h-10 bg-white text-black hover:bg-zinc-200 rounded-sm transition-all"
+                    >
+                      <TerminalSquare size={14} className="mr-2" />
+                      Initialize Roadmap
+                    </Button>
+                    <Button
+                      onClick={() => router.push('/roadmap')}
+                      variant="ghost"
+                      className="w-full justify-start h-10 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-sm transition-all"
+                    >
+                      View Active Path &rarr;
+                    </Button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Minor System Info */}
+            <div className="border border-zinc-800 bg-[#050505] p-4 rounded-md">
+              <div className="flex justify-between items-center font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+                <span>Account Tier</span>
+                <span className="text-zinc-300">Standard</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
 
       </main>
     </div>

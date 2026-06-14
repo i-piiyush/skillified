@@ -7,6 +7,7 @@ type TopResource = {
 };
 
 export type WeakTopic = {
+  id:string | null | undefined
   success: boolean;
   topic: string;
   difficulty: string;

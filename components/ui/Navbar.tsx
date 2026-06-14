@@ -26,16 +26,18 @@ export interface StaggeredMenuProps {
   isFixed: boolean;
   changeMenuColorOnOpen?: boolean;
   closeOnClickAway?: boolean;
+  panelColor?: string;      // slide-in panel background (default: '#ffffff')
+  panelTextColor?: string;  // text/links inside the panel (default: '#000000')
   onMenuOpen?: () => void;
   onMenuClose?: () => void;
 }
 
 // Map GSAP's power eases to Framer Motion cubic-bezier curves
-const easeOut4 = [0.16, 1, 0.3, 1];
-const easeIn3 = [0.55, 0.085, 0.68, 0.53];
-const easeOut2 = [0.25, 1, 0.5, 1];
-const easeOut3 = [0.215, 0.61, 0.355, 1];
-const easeInOut3 = [0.645, 0.045, 0.355, 1];
+const easeOut4: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const easeIn3: [number, number, number, number] = [0.55, 0.085, 0.68, 0.53];
+const easeOut2: [number, number, number, number] = [0.25, 1, 0.5, 1];
+const easeOut3: [number, number, number, number] = [0.215, 0.61, 0.355, 1];
+const easeInOut3: [number, number, number, number] = [0.645, 0.045, 0.355, 1];
 
 export const Navbar: React.FC<StaggeredMenuProps> = ({
   position = 'right',
@@ -48,11 +50,13 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
   logoUrl,
   logoContent,
   menuButtonColor = '#fff',
-  openMenuButtonColor = '#000', // FIX: default to dark so it's visible on white panel
+  openMenuButtonColor = '#000',
   changeMenuColorOnOpen = true,
   accentColor = '#5227FF',
   isFixed = false,
   closeOnClickAway = true,
+  panelColor = '#ffffff',
+  panelTextColor = '#000000',
   onMenuOpen,
   onMenuClose
 }: StaggeredMenuProps) => {
@@ -99,11 +103,11 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
   };
 
   const itemNumberVariants: Variants = {
-    closed: { '--sm-num-opacity': 0 } as React.CSSProperties & Record<string, unknown>,
+    closed: { '--sm-num-opacity': 0 } as any,
     open: (i: number) => ({
       '--sm-num-opacity': 1,
       transition: { delay: itemsStart + 0.1 + i * 0.08, duration: 0.6, ease: easeOut2 }
-    }) as React.CSSProperties & Record<string, unknown>
+    }) as any
   };
 
   const socialsTitleVariants: Variants = {
@@ -140,14 +144,14 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
     setOpen(target);
     if (target) onMenuOpen?.();
     else onMenuClose?.();
-  }, [open, onMenuOpen, onMenuClose]);
+  }, [open, setOpen, onMenuOpen, onMenuClose]);
 
   const closeMenu = useCallback(() => {
     if (open) {
       setOpen(false);
       onMenuClose?.();
     }
-  }, [open, onMenuClose]);
+  }, [open, setOpen, onMenuClose]);
 
   useEffect(() => {
     if (!closeOnClickAway || !open) return;
@@ -248,7 +252,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
             ref={toggleBtnRef}
             animate={{ color: currentToggleColor }}
             transition={{ delay: open ? 0.18 : 0, duration: 0.3, ease: easeOut2 }}
-            className="sm-toggle relative inline-flex items-center gap-[0.3rem] bg-transparent border-0 cursor-pointer font-medium leading-none overflow-visible pointer-events-auto z-[60]"
+            className="sm-toggle relative inline-flex items-center gap-[0.3rem] bg-transparent border-0 cursor-pointer font-medium leading-none overflow-visible pointer-events-auto z-60"
             style={{ color: currentToggleColor }}
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
@@ -267,27 +271,40 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
             </span>
 
             <span
-              className="sm-icon relative w-[14px] h-[14px] shrink-0 inline-flex items-center justify-center"
+              className="sm-icon relative w-3.5 h-3.5 shrink-0 inline-flex items-center justify-center"
               aria-hidden="true"
             >
               <motion.span
                 variants={plusHVariants}
-                className="sm-icon-line absolute left-1/2 top-1/2 w-full h-[2px] bg-current rounded-[2px] -translate-x-1/2 -translate-y-1/2"
+                className="sm-icon-line absolute left-1/2 top-1/2 w-full h-0.5 bg-current rounded-xs -translate-x-1/2 -translate-y-1/2"
               />
               <motion.span
                 variants={plusVVariants}
-                className="sm-icon-line sm-icon-line-v absolute left-1/2 top-1/2 w-full h-[2px] bg-current rounded-[2px] -translate-x-1/2 -translate-y-1/2"
+                className="sm-icon-line sm-icon-line-v absolute left-1/2 top-1/2 w-full h-0.5 bg-current rounded-xs -translate-x-1/2 -translate-y-1/2"
               />
             </span>
           </motion.button>
         </header>
+
+        {/* Full-screen backdrop blur — covers entire viewport when menu is open */}
+        <motion.div
+          aria-hidden="true"
+          className="sm-backdrop absolute inset-0 pointer-events-none z-8"
+          initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+          animate={open
+            ? { opacity: 1, backdropFilter: 'blur(20px)' }
+            : { opacity: 0, backdropFilter: 'blur(0px)' }
+          }
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          style={{ background: 'rgba(0,0,0,0.25)', WebkitBackdropFilter: open ? 'blur(20px)' : 'blur(0px)' }}
+        />
 
         {/* Slide-in panel */}
         <motion.aside
           id="staggered-menu-panel"
           ref={panelRef}
           variants={panelVariants}
-          className="staggered-menu-panel absolute top-0 right-0 h-full bg-white flex flex-col p-[6em_2em_2em_2em] overflow-y-auto z-10 backdrop-blur-[12px] pointer-events-auto"
+          className="staggered-menu-panel absolute top-0 right-0 h-full bg-white flex flex-col p-[6em_2em_2em_2em] overflow-y-auto z-10 backdrop-blur-md pointer-events-auto"
           style={{ WebkitBackdropFilter: 'blur(12px)' }}
           aria-hidden={!open}
         >
@@ -306,7 +323,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
                     key={it.label + idx}
                   >
                     <a
-                      className="sm-panel-item relative text-black font-semibold text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]"
+                      className="sm-panel-item relative text-black font-semibold text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline"
                       href={it.link}
                       aria-label={it.ariaLabel}
                       data-index={idx + 1}
@@ -314,9 +331,14 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
                       <motion.span
                         custom={idx}
                         variants={itemVariants}
-                        className="sm-panel-itemLabel inline-block [transform-origin:50%_100%] will-change-transform"
+                        className="sm-panel-itemLabel inline-block origin-[50%_100%] will-change-transform"
                       >
                         {it.label}
+                        {displayItemNumbering && (
+                          <sup className="sm-panel-itemNum">
+                            {String(idx + 1).padStart(2, '0')}
+                          </sup>
+                        )}
                       </motion.span>
                     </a>
                   </motion.li>
@@ -324,7 +346,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
               ) : (
                 <li className="sm-panel-itemWrap relative overflow-hidden leading-none" aria-hidden="true">
                   <span className="sm-panel-item relative text-black font-semibold text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]">
-                    <span className="sm-panel-itemLabel inline-block [transform-origin:50%_100%] will-change-transform">
+                    <span className="sm-panel-itemLabel inline-block origin-[50%_100%] will-change-transform">
                       No items
                     </span>
                   </span>
@@ -336,7 +358,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
               <div className="sm-socials mt-auto pt-8 flex flex-col gap-3" aria-label="Social links">
                 <motion.h3
                   variants={socialsTitleVariants}
-                  className="sm-socials-title m-0 text-base font-medium [color:var(--sm-accent,#5227FF)]"
+                  className="sm-socials-title m-0 text-base font-medium text-(--sm-accent,#5227FF)"
                 >
                   Socials
                 </motion.h3>
@@ -350,7 +372,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
                         href={s.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="sm-socials-link text-[1.2rem] font-medium text-[#111] no-underline relative inline-block py-[2px] transition-[color,opacity] duration-300 ease-linear"
+                        className="sm-socials-link text-[1.2rem] font-medium text-[#111] no-underline relative inline-block py-0.5 transition-[color,opacity] duration-300 ease-linear"
                       >
                         {s.label}
                       </a>
@@ -395,11 +417,10 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
         .sm-scope .sm-socials-link { font-size: 1.2rem; font-weight: 500; color: #111; text-decoration: none; position: relative; padding: 2px 0; display: inline-block; transition: color 0.3s ease, opacity 0.3s ease; }
         .sm-scope .sm-socials-link:hover { color: var(--sm-accent, #5227FF); }
         .sm-scope .sm-panel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-        .sm-scope .sm-panel-item { position: relative; color: #000; font-weight: 600; font-size: 4rem; cursor: pointer; line-height: 1; letter-spacing: -2px; text-transform: uppercase; transition: background 0.25s, color 0.25s; display: inline-block; text-decoration: none; padding-right: 1.4em; }
+        .sm-scope .sm-panel-item { position: relative; color: #000; font-weight: 600; font-size: 4rem; cursor: pointer; line-height: 1; letter-spacing: -2px; text-transform: uppercase; transition: background 0.25s, color 0.25s; display: inline-block; text-decoration: none; }
         .sm-scope .sm-panel-itemLabel { display: inline-block; will-change: transform; transform-origin: 50% 100%; }
         .sm-scope .sm-panel-item:hover { color: var(--sm-accent, #5227FF); }
-        .sm-scope .sm-panel-list[data-numbering] { counter-reset: smItem; }
-        .sm-scope .sm-panel-list[data-numbering] .sm-panel-itemWrap::after { counter-increment: smItem; content: counter(smItem, decimal-leading-zero); position: absolute; top: 0.1em; right: 3.2em; font-size: 18px; font-weight: 400; color: var(--sm-accent, #5227FF); letter-spacing: 0; pointer-events: none; user-select: none; opacity: var(--sm-num-opacity, 0); }
+        .sm-scope .sm-panel-itemNum { font-size: 0.9rem; font-weight: 400; letter-spacing: 0; vertical-align: super; line-height: 0; margin-left: 0.15em; color: var(--sm-accent, #5227FF); opacity: var(--sm-num-opacity, 0); transition: opacity 0.3s ease; font-family: monospace; }
         @media (max-width: 1024px) { .sm-scope .staggered-menu-panel { width: 100%; left: 0; right: 0; } .sm-scope .staggered-menu-wrapper[data-open] .sm-logo-img { filter: invert(100%); } }
         @media (max-width: 640px) { .sm-scope .staggered-menu-panel { width: 100%; left: 0; right: 0; } }
       `}</style>
