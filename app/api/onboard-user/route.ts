@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 export const POST = async (req: Request) => {
   const body = await req.json();
-  const { domain, email, stack, role } = body;
+  const { domain, email, stack, role, userId } = body;
 
-  if (!domain || !email || !stack || !role) {
+  if (!domain || !email || !stack || !role || !userId) {
     return NextResponse.json(
       {
         message: "Name, domain, email, role or stack can't be empty",
@@ -24,13 +24,15 @@ export const POST = async (req: Request) => {
     // Agar user nahi mila (frontend ne pehle banaya nahi), toh catch block mein P2025 error aayega.
     const updatedUser = await prisma.user.update({
       where: {
-        email: email,
+        id: userId,
       },
       data: {
         domain: domain,
         stack: updatedStack,
         role: role,
         level: 1,
+        userOnboarded:true
+        
       },
     });
 

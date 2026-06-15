@@ -1,6 +1,6 @@
 import { analyseResult } from "@/lib/analyses/analyseResult";
 import { getWeakTopics } from "@/lib/analyses/getWeakTopics";
-import { Role, ROLE_CRITERIA } from "@/lib/analyses/roleCriteria";
+import { Role } from "@/lib/analyses/roleCriteria";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -143,6 +143,7 @@ export const POST = async (req: Request) => {
           weakTopicNames: analysis.weakTopics,
           roleReadiness: analysis.roleReadiness,
           lastTested: new Date(),
+        
         },
       });
 

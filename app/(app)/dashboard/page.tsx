@@ -338,14 +338,14 @@ export default function DashboardPage() {
                   </div>
                   <div className="grid gap-2">
                     <Button
-                      onClick={() => router.push('/onboard/create-roadmap')}
+                      onClick={() => router.push('/onboarding/create-roadmap')}
                       className="w-full justify-start h-10 bg-white text-black hover:bg-zinc-200 rounded-sm transition-all"
                     >
                       <TerminalSquare size={14} className="mr-2" />
                       Initialize Roadmap
                     </Button>
                     <Button
-                      onClick={() => router.push('/roadmap')}
+                      onClick={() => router.push('/dashboard/roadmap')}
                       variant="ghost"
                       className="w-full justify-start h-10 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-sm transition-all"
                     >

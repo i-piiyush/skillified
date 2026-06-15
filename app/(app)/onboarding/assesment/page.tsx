@@ -4,29 +4,32 @@ import { useState, useRef, useEffect } from "react";
 import {
   ChevronDown,
   Check,
-  Sparkles,
   Loader2,
   AlertCircle,
   X,
+  TerminalSquare,
+  Activity,
 } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion, AnimatePresence } from "framer-motion";
 
-// 🔥 Apna existing schema aur type yahan import karo
-// NOTE: Is path ko apne project ke hisaab se update kar lena jahan schema rakha hai
+// 🔥 Your existing schema import
 import { onboardValidation } from "../../../../schemas/frontend/onboardSchema";
 import { SignUpFormData } from "@/types/signUp";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Shadcn UI
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
+import { Controller } from "react-hook-form";
+import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
+import Loader from "@/components/ui/Loader";
 
-interface ToastMessage {
-  id: number;
-  type: "error" | "success" | "info";
-  title: string;
-  message: string;
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ApiErrorResponse {
   message?: string;
@@ -55,83 +58,11 @@ export const DOMAINS = [
   "System Design",
 ];
 
-// Step fields matching your existing schema keys
 const STEP_FIELDS: Record<number, (keyof SignUpFormData)[]> = {
   0: ["name", "email", "domain"],
   1: ["stack"],
   2: ["role"],
 };
-
-// ─── Toast Component ──────────────────────────────────────────────────────────
-
-function Toast({
-  toasts,
-  onDismiss,
-}: {
-  toasts: ToastMessage[];
-  onDismiss: (id: number) => void;
-}) {
-  if (!toasts.length) return null;
-  return (
-    <div className="fixed top-4 right-4 z-[300] flex flex-col gap-2 max-w-sm w-full">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`flex items-start gap-3 p-4 rounded-2xl shadow-xl border font-sans text-sm animate-in slide-in-from-right-4 duration-300 ${
-            toast.type === "error"
-              ? "bg-red-50 border-red-200 text-red-800"
-              : toast.type === "success"
-                ? "bg-green-50 border-green-200 text-green-800"
-                : "bg-blue-50 border-blue-200 text-blue-800"
-          }`}
-        >
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="font-bold">{toast.title}</p>
-            <p className="text-xs mt-0.5 opacity-80">{toast.message}</p>
-          </div>
-          <button
-            onClick={() => onDismiss(toast.id)}
-            className="opacity-50 hover:opacity-100 transition-opacity"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StepErrorBanner({ message }: { message: string | null }) {
-  if (!message) return null;
-  return (
-    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl font-sans text-sm text-red-700 animate-in fade-in duration-200 mt-6">
-      <AlertCircle className="w-4 h-4 shrink-0" />
-      <span>{message}</span>
-    </div>
-  );
-}
-
-function useToast() {
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const counterRef = useRef(0);
-
-  const addToast = (
-    type: ToastMessage["type"],
-    title: string,
-    message: string,
-    duration = 5000,
-  ) => {
-    const id = ++counterRef.current;
-    setToasts((prev) => [...prev, { id, type, title, message }]);
-    if (duration > 0) setTimeout(() => dismissToast(id), duration);
-  };
-
-  const dismissToast = (id: number) =>
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-
-  return { toasts, addToast, dismissToast };
-}
 
 function parseAxiosError(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -158,28 +89,25 @@ function parseAxiosError(error: unknown): string {
 export default function RegistrationPage() {
   const [step, setStep] = useState(0);
   const [stackOptions, setStackOptions] = useState<string[]>([]);
-
   const [stackOpen, setStackOpen] = useState(false);
   const [stackSearch, setStackSearch] = useState("");
   const [domainOpen, setDomainOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [isGeneratingTest, setIsGeneratingTest] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
   const stackRef = useRef<HTMLDivElement>(null);
   const domainRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { toasts, addToast, dismissToast } = useToast();
+  const { data: session, isPending } = authClient.useSession();
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-    watch,
-    trigger,
-  } = useForm<SignUpFormData>({
+  useEffect(() => {
+    if (isPending) {
+      return;
+    }
+  }, [isPending]);
+
+  const form = useForm<SignUpFormData>({
     resolver: zodResolver(onboardValidation),
     defaultValues: {
       name: "",
@@ -189,6 +117,15 @@ export default function RegistrationPage() {
       role: "",
     },
   });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    trigger,
+    formState: { errors },
+  } = form;
 
   const selectedDomain = watch("domain") || "";
   const selectedStack = watch("stack") || "";
@@ -228,7 +165,9 @@ export default function RegistrationPage() {
     } catch (error) {
       const message = parseAxiosError(error);
       setStepError(message);
-      addToast("error", "Could not load technologies", message);
+      toast.error("Generation Failed", {
+        description: message,
+      });
     } finally {
       setLoading(false);
     }
@@ -241,12 +180,16 @@ export default function RegistrationPage() {
         role: selectedRole,
         email: emailValue,
         stack: selectedStack,
+        userId: session?.user?.id || session?.session?.userId,
       });
       return true;
     } catch (error) {
       const message = parseAxiosError(error);
       setStepError(message);
-      addToast("error", "Could not start assessment", message);
+
+      toast.error("Assessment Execution Failed", {
+        description: message,
+      });
       return false;
     }
   };
@@ -254,13 +197,10 @@ export default function RegistrationPage() {
   const handleNext = async () => {
     setStepError(null);
     const fields = STEP_FIELDS[step];
-    console.log(fields);
-
     if (fields) {
       const isValid = await trigger(fields);
       if (!isValid) return;
     }
-
     if (step === 0) await fetchStack();
     else if (step === 1) setStep((s) => s + 1);
     else if (step === 2) setStep((s) => s + 1);
@@ -271,13 +211,13 @@ export default function RegistrationPage() {
     setStep((s) => s - 1);
   };
 
+  // 🔥 Enforces a STRICT 3-second minimum loader as requested
   const handleFinalSubmit = async () => {
     setIsGeneratingTest(true);
-
     try {
       const [testStarted] = await Promise.all([
         startTest(),
-        new Promise((resolve) => setTimeout(resolve, 2000)),
+        new Promise((resolve) => setTimeout(resolve, 3000)), // Minimum 3s wait
       ]);
 
       if (testStarted) {
@@ -289,347 +229,472 @@ export default function RegistrationPage() {
       setIsGeneratingTest(false);
     }
   };
-
+  if (isPending) {
+    return <Loader />;
+  }
   return (
-    <div className="min-h-screen bg-khaki flex items-center justify-center p-6 font-serif selection:bg-alabaster selection:text-chestnut relative">
-      <Toast toasts={toasts} onDismiss={dismissToast} />
+    <div className="min-h-screen bg-black flex items-center justify-center p-6 font-sans selection:bg-white selection:text-black relative overflow-hidden">
+      {/* Background Radial */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_40%)]" />
+      </div>
 
-      {isGeneratingTest && (
-        <div className="fixed inset-0 z-200 flex flex-col items-center justify-center bg-stone-900/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <Loader2 className="w-12 h-12 text-white animate-spin mb-6" />
-          <h2 className="text-2xl md:text-3xl text-white font-serif tracking-tight mb-2 text-center px-4">
-            Generating your test...
-          </h2>
-          <p className="text-stone-300 font-sans text-sm text-center px-4 max-w-sm">
-            Please wait while we analyze your stack and craft the perfect
-            assessment.
-          </p>
-        </div>
-      )}
+      {/* 🔥 Custom Terminal Loader (3s Minimum) */}
+      <AnimatePresence>
+        {isGeneratingTest && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm"
+          >
+            <div className="w-full max-w-sm border border-zinc-800 bg-[#050505] p-8 rounded-md relative shadow-2xl">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="flex items-center gap-3 border-b border-zinc-900 pb-4 mb-6">
+                <TerminalSquare size={16} className="text-zinc-500" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                  skillify // execution
+                </span>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 font-mono text-sm text-white">
+                  <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                  <span>Test is generating...</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between font-mono text-[10px] text-zinc-500 uppercase tracking-widest">
+                    <span>Compiling Node Map</span>
+                    <span className="animate-pulse">Active</span>
+                  </div>
+                  <div className="h-[2px] w-full bg-zinc-900 overflow-hidden rounded-full">
+                    <motion.div
+                      className="h-full bg-white"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 3, ease: "linear" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Main Container */}
       <div className="relative z-10 w-full max-w-lg">
-        {/* Progress Bar */}
-        <div className="flex gap-2 justify-center mb-10">
-          {[0, 1, 2].map((i) => (
+        {/* Flat Wireframe Progress Bar */}
+        <div className="flex gap-[2px] justify-center mb-10 w-full">
+          {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`h-1 rounded-full transition-all duration-500 ${
-                i <= step ? "bg-alabaster w-8" : "bg-dust/50 w-4"
+              className={`h-[2px] flex-1 transition-all duration-500 ${
+                i <= step ? "bg-white" : "bg-zinc-900"
               }`}
             />
           ))}
         </div>
 
         {/* Card */}
-        <div className="bg-white p-10 md:p-14 min-h-125 flex flex-col justify-between rounded-3xl shadow-xl">
-          <div className="space-y-8">
-            {/* ── Step 0 ── */}
-            {step === 0 && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <span className="text-[10px] uppercase tracking-widest font-sans font-bold text-chestnut">
-                  Step 01 — Identity
-                </span>
-                <h1 className="text-3xl text-stone-900 mt-2 tracking-tight">
-                  Tell us about yourself.
-                </h1>
-                <div className="space-y-4 mt-8">
+        <div className="bg-[#050505] p-8 md:p-12 min-h-[500px] flex flex-col justify-between border border-zinc-800 rounded-md shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+          <form className="space-y-8 flex-1">
+            <AnimatePresence mode="wait">
+              {/* ── Step 0: Identity ── */}
+              {step === 0 && (
+                <motion.div
+                  key="step-0"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
                   <div>
-                    <Input
-                      label="What should we call you?"
-                      placeholder="e.g. Piyush Chhabra"
-                      register={register("name")}
-                    />
-                    {errors.name && (
-                      <FieldError message={errors.name.message} />
-                    )}
-                  </div>
-                  <div>
-                    <Input
-                      label="Email Address"
-                      type="email"
-                      placeholder="piyush@example.com"
-                      register={register("email")}
-                    />
-                    {errors.email && (
-                      <FieldError message={errors.email.message} />
-                    )}
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 block mb-2">
+                      [SYS_INIT] // Identity
+                    </span>
+                    <h1 className="text-3xl text-white font-medium tracking-tighter">
+                      Define Parameters.
+                    </h1>
                   </div>
 
-                  {/* Domain Dropdown */}
-                  <div className="relative" ref={domainRef}>
-                    <label className="text-[10px] uppercase tracking-widest font-sans font-bold text-chestnut mb-2 block">
-                      Domain
-                    </label>
+                  <div className="space-y-5">
+                    <Controller
+                      name="name"
+                      control={form.control}
+                      render={({ field, fieldState }) => (
+                        <Field data-invalid={fieldState.invalid}>
+                          <FieldLabel className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                            Alias // Name
+                          </FieldLabel>
+
+                          <Input
+                            {...field}
+                            placeholder="e.g. Piyush Chhabra"
+                            aria-invalid={fieldState.invalid}
+                            className="h-11 bg-transparent border-zinc-800 text-white rounded-sm focus-visible:ring-1 focus-visible:ring-zinc-500"
+                          />
+
+                          {fieldState.error && (
+                            <FieldError errors={[fieldState.error]} />
+                          )}
+                        </Field>
+                      )}
+                    />
+
+                    <Controller
+                      name="email"
+                      control={form.control}
+                      render={({ field, fieldState }) => (
+                        <Field data-invalid={fieldState.invalid}>
+                          <FieldLabel className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                            Comms // Email
+                          </FieldLabel>
+
+                          <Input
+                            {...field}
+                            type="email"
+                            placeholder="piyush@example.com"
+                            aria-invalid={fieldState.invalid}
+                            className="h-11 bg-transparent border-zinc-800 text-white rounded-sm focus-visible:ring-1 focus-visible:ring-zinc-500"
+                          />
+
+                          {fieldState.error && (
+                            <FieldError errors={[fieldState.error]} />
+                          )}
+                        </Field>
+                      )}
+                    />
+
+                    {/* Custom Dropdown mapped to React Hook Form */}
+                    <div className="space-y-2 relative" ref={domainRef}>
+                      <label className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                        Vector // Domain
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setDomainOpen(!domainOpen)}
+                        className={`w-full flex items-center justify-between px-4 h-11 bg-transparent border rounded-sm transition-all font-sans text-sm ${
+                          domainOpen
+                            ? "border-zinc-500 ring-1 ring-zinc-500"
+                            : "border-zinc-800 hover:border-zinc-700"
+                        }`}
+                      >
+                        <span
+                          className={
+                            selectedDomain ? "text-white" : "text-zinc-600"
+                          }
+                        >
+                          {selectedDomain || "Select your field..."}
+                        </span>
+
+                        <ChevronDown
+                          className={`w-4 h-4 text-zinc-500 transition-transform ${
+                            domainOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {errors.domain && (
+                        <p className="text-[10px] uppercase font-mono text-red-400">
+                          {errors.domain.message}
+                        </p>
+                      )}
+
+                      <AnimatePresence>
+                        {domainOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            className="absolute top-full left-0 right-0 mt-1 bg-[#0A0A0A] border border-zinc-800 rounded-sm shadow-xl z-50 py-1 max-h-60 overflow-y-auto custom-scrollbar"
+                          >
+                            {DOMAINS.map((d) => (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={() => {
+                                  setValue("domain", d, {
+                                    shouldValidate: true,
+                                  });
+                                  setValue("stack", "");
+                                  setDomainOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white transition-colors flex items-center justify-between"
+                              >
+                                <span>{d}</span>
+
+                                {selectedDomain === d && (
+                                  <Check className="w-4 h-4 text-white" />
+                                )}
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── Step 1: Arsenal ── */}
+              {step === 1 && (
+                <motion.div
+                  key="step-1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 block mb-2">
+                      [SYS_VAR] // Arsenal
+                    </span>
+                    <h1 className="text-3xl text-white font-medium tracking-tighter">
+                      Select Primary Tech.
+                    </h1>
+                  </div>
+
+                  <div className="relative mt-6" ref={stackRef}>
                     <button
                       type="button"
-                      onClick={() => setDomainOpen(!domainOpen)}
-                      className={`w-full flex items-center justify-between px-4 py-3.5 bg-dust/20 border rounded-2xl transition-all font-sans text-sm ${
-                        domainOpen
-                          ? "border-chestnut ring-4 ring-chestnut/5"
-                          : "border-dust/60"
+                      onClick={() => setStackOpen(!stackOpen)}
+                      className={`w-full flex items-center justify-between px-4 h-11 bg-transparent border rounded-sm transition-all font-sans text-sm ${
+                        stackOpen
+                          ? "border-zinc-500 ring-1 ring-zinc-500"
+                          : "border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
                       <span
                         className={
-                          selectedDomain ? "text-stone-900" : "text-stone-400"
+                          selectedStack ? "text-white" : "text-zinc-600"
                         }
                       >
-                        {selectedDomain || "Select your field"}
+                        {selectedStack || "Target Stack..."}
                       </span>
-                      <ChevronDown
-                        className={`w-4 h-4 text-stone-400 transition-transform ${domainOpen ? "rotate-180" : ""}`}
-                      />
+                      <ChevronDown className="w-4 h-4 text-zinc-500" />
                     </button>
-                    {errors.domain && (
-                      <FieldError message={errors.domain.message} />
+                    {errors.stack && (
+                      <p className="text-[10px] uppercase font-mono text-red-400 mt-2">
+                        {errors.stack.message}
+                      </p>
                     )}
 
-                    {domainOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-alabaster/60 rounded-2xl shadow-xl z-50 py-2 max-h-60 overflow-y-auto animate-in zoom-in-95 duration-200">
-                        {DOMAINS.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => {
-                              setValue("domain", d, { shouldValidate: true });
-                              setValue("stack", "");
-                              setDomainOpen(false);
-                            }}
-                            className="w-full text-left px-4 py-2.5 text-sm font-sans hover:bg-dust/30 transition-colors flex items-center justify-between"
-                          >
-                            <span>{d}</span>
-                            {selectedDomain === d && (
-                              <Check className="w-4 h-4 text-chestnut" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 1 ── */}
-            {step === 1 && (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                <span className="text-[10px] uppercase tracking-widest font-sans font-bold text-chestnut">
-                  Step 02 — Arsenal
-                </span>
-                <h1 className="text-3xl text-stone-900 mt-2 tracking-tight">
-                  Choose your Tech.
-                </h1>
-                <p className="text-stone-500 font-sans text-sm mt-1">
-                  Select the primary technology for your assessment.
-                </p>
-
-                <div className="relative mt-8" ref={stackRef}>
-                  <button
-                    type="button"
-                    onClick={() => setStackOpen(!stackOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3.5 bg-dust/20 border border-dust/60 rounded-2xl font-sans text-sm"
-                  >
-                    <span
-                      className={
-                        selectedStack ? "text-stone-900" : "text-stone-400"
-                      }
-                    >
-                      {selectedStack || "Pick a technology..."}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-stone-400" />
-                  </button>
-                  {errors.stack && (
-                    <FieldError message={errors.stack.message} />
-                  )}
-
-                  {stackOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-alabaster/60 rounded-2xl shadow-xl z-50 p-2 animate-in zoom-in-95 duration-200">
-                      <input
-                        className="w-full px-3 py-2 bg-dust/30 rounded-xl text-sm outline-none border border-transparent focus:border-dust mb-2"
-                        placeholder="Search stack..."
-                        value={stackSearch}
-                        onChange={(e) => setStackSearch(e.target.value)}
-                      />
-                      <div className="max-h-48 overflow-y-auto">
-                        {stackOptions.filter((s) =>
-                          s.toLowerCase().includes(stackSearch.toLowerCase()),
-                        ).length === 0 ? (
-                          <p className="text-center text-xs text-stone-400 font-sans py-4">
-                            No results for &quot;{stackSearch}&quot;
-                          </p>
-                        ) : (
-                          stackOptions
-                            .filter((s) =>
+                    <AnimatePresence>
+                      {stackOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          className="absolute top-full left-0 right-0 mt-1 bg-[#0A0A0A] border border-zinc-800 rounded-sm shadow-xl z-50 p-1"
+                        >
+                          <input
+                            className="w-full px-3 h-9 bg-black border border-zinc-800 rounded-sm text-sm text-white placeholder:text-zinc-600 outline-none focus:border-zinc-500 mb-1"
+                            placeholder="Search registry..."
+                            value={stackSearch}
+                            onChange={(e) => setStackSearch(e.target.value)}
+                          />
+                          <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                            {stackOptions.filter((s) =>
                               s
                                 .toLowerCase()
                                 .includes(stackSearch.toLowerCase()),
-                            )
-                            .map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => {
-                                  setValue("stack", s, {
-                                    shouldValidate: true,
-                                  });
-                                  setStackOpen(false);
-                                }}
-                                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-dust/30 rounded-lg transition-colors text-left"
-                              >
-                                <span className="text-sm font-sans">{s}</span>
-                                {selectedStack === s && (
-                                  <Check className="w-4 h-4 text-chestnut" />
-                                )}
-                              </button>
-                            ))
-                        )}
-                      </div>
-                    </div>
+                            ).length === 0 ? (
+                              <p className="text-center text-xs text-zinc-600 font-mono py-4">
+                                No match found.
+                              </p>
+                            ) : (
+                              stackOptions
+                                .filter((s) =>
+                                  s
+                                    .toLowerCase()
+                                    .includes(stackSearch.toLowerCase()),
+                                )
+                                .map((s) => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => {
+                                      setValue("stack", s, {
+                                        shouldValidate: true,
+                                      });
+                                      setStackOpen(false);
+                                    }}
+                                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-900 rounded-sm transition-colors text-left"
+                                  >
+                                    <span className="text-sm text-zinc-300">
+                                      {s}
+                                    </span>
+                                    {selectedStack === s && (
+                                      <Check className="w-4 h-4 text-white" />
+                                    )}
+                                  </button>
+                                ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── Step 2: Objective ── */}
+              {step === 2 && (
+                <motion.div
+                  key="step-2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 block mb-2">
+                      [SYS_GOAL] // Objective
+                    </span>
+                    <h1 className="text-3xl text-white font-medium tracking-tighter">
+                      Set Target Node.
+                    </h1>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 max-h-75 overflow-y-auto custom-scrollbar pr-1">
+                    {ROLES.map((r) => (
+                      <button
+                        key={r.label}
+                        type="button"
+                        onClick={() =>
+                          setValue("role", r.label, { shouldValidate: true })
+                        }
+                        className={`flex flex-col items-start p-4 rounded-sm border text-left transition-all ${
+                          selectedRole === r.label
+                            ? "border-white bg-white/5 text-white"
+                            : "border-zinc-800 bg-transparent text-zinc-400 hover:border-zinc-600 hover:text-zinc-300"
+                        }`}
+                      >
+                        <span className="text-sm font-medium">{r.label}</span>
+                        <span className="text-xs font-mono mt-1 opacity-70">
+                          {r.sub}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {errors.role && (
+                    <p className="text-[10px] uppercase font-mono text-red-400">
+                      {errors.role.message}
+                    </p>
                   )}
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
 
-            {/* ── Step 2 ── */}
-            {step === 2 && (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                <span className="text-[10px] uppercase tracking-widest font-sans font-bold text-chestnut">
-                  Step 03 — Objective
-                </span>
-                <h1 className="text-3xl text-stone-900 mt-2 tracking-tight">
-                  What&apos;s the goal?
-                </h1>
-                <div className="grid grid-cols-1 gap-3 mt-8 max-h-75 overflow-y-auto pr-2 custom-scrollbar">
-                  {ROLES.map((r) => (
-                    <button
-                      key={r.label}
-                      type="button"
-                      onClick={() =>
-                        setValue("role", r.label, { shouldValidate: true })
-                      }
-                      className={`flex flex-col items-start p-4 rounded-2xl border text-left transition-all ${
-                        selectedRole === r.label
-                          ? "border-chestnut bg-dust/30 ring-1 ring-chestnut"
-                          : "border-alabaster/60 bg-white hover:border-dust"
-                      }`}
-                    >
-                      <span className="text-sm font-sans font-medium text-stone-900">
-                        {r.label}
+              {/* ── Step 3: Review ── */}
+              {step === 3 && (
+                <motion.div
+                  key="step-3"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center space-y-6"
+                >
+                  <div className="w-12 h-12 border border-zinc-700 bg-zinc-900 rounded-sm flex items-center justify-center mx-auto">
+                    <Activity className="text-white w-5 h-5" />
+                  </div>
+                  <h1 className="text-3xl text-white font-medium tracking-tighter">
+                    Configuration Complete.
+                  </h1>
+
+                  <div className="border border-zinc-800 bg-[#0A0A0A] p-6 rounded-sm text-left space-y-4">
+                    <div className="flex justify-between font-mono text-xs">
+                      <span className="text-zinc-600 uppercase tracking-widest">
+                        Alias
                       </span>
-                      <span className="text-xs font-sans text-stone-400 mt-0.5">
-                        {r.sub}
+                      <span className="text-zinc-300">
+                        {nameValue || "N/A"}
                       </span>
-                    </button>
-                  ))}
-                </div>
-                {errors.role && <FieldError message={errors.role.message} />}
+                    </div>
+                    <div className="h-px bg-zinc-900 w-full" />
+                    <div className="flex justify-between font-mono text-xs">
+                      <span className="text-zinc-600 uppercase tracking-widest">
+                        Vector
+                      </span>
+                      <span className="text-zinc-300">
+                        {selectedDomain || "N/A"}
+                      </span>
+                    </div>
+                    <div className="h-px bg-zinc-900 w-full" />
+                    <div className="flex justify-between font-mono text-xs">
+                      <span className="text-zinc-600 uppercase tracking-widest">
+                        Tech
+                      </span>
+                      <span className="text-zinc-300">
+                        {selectedStack || "N/A"}
+                      </span>
+                    </div>
+                    <div className="h-px bg-zinc-900 w-full" />
+                    <div className="flex justify-between font-mono text-xs">
+                      <span className="text-zinc-600 uppercase tracking-widest">
+                        Target
+                      </span>
+                      <span className="text-zinc-300">
+                        {selectedRole || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {stepError && (
+              <div className="flex items-center gap-2 p-3 bg-red-950/20 border border-red-900/50 rounded-sm font-mono text-[10px] uppercase tracking-widest text-red-400 mt-4">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{stepError}</span>
               </div>
             )}
+          </form>
 
-            {/* ── Step 3 (Review) ── */}
-            {step === 3 && (
-              <div className="text-center animate-in fade-in zoom-in-95 duration-700">
-                <div className="w-16 h-16 bg-chestnut rounded-full flex items-center justify-center mx-auto shadow-lg shadow-chestnut/20">
-                  <Sparkles className="text-white w-8 h-8" />
-                </div>
-                <h1 className="text-3xl text-stone-900 mt-6 tracking-tight">
-                  Ready, {nameValue ? nameValue.trim().split(" ")[0] : "there"}?
-                </h1>
-                <div className="mt-8 p-6 bg-dust/20 rounded-3xl border border-alabaster/60 text-left space-y-3 font-sans">
-                  <DetailRow label="Domain" value={selectedDomain} />
-                  <DetailRow label="Stack" value={selectedStack} />
-                  <DetailRow label="Target" value={selectedRole} />
-                </div>
-              </div>
-            )}
-
-            <StepErrorBanner message={stepError} />
-          </div>
-
-          {/* ── Actions ── */}
-          <div className="flex items-center justify-between mt-12">
+          {/* ── Action Buttons ── */}
+          <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-900">
             {step > 0 ? (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={prevStep}
                 disabled={loading || isGeneratingTest}
-                className="text-stone-400 hover:text-chestnut font-sans text-sm transition-colors disabled:opacity-40"
+                className="text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm font-mono text-xs uppercase tracking-widest"
               >
-                ← Back
-              </button>
+                &larr; Back
+              </Button>
             ) : (
               <div />
             )}
 
             {step < 3 ? (
-              <button
-                type="button"
+              <Button
                 onClick={handleNext}
-                className="flex items-center gap-2 px-8 py-4 rounded-2xl font-sans font-bold text-sm transition-all bg-stone-900 text-white hover:bg-chestnut hover:scale-[1.02] shadow-lg shadow-dust"
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading
-                  ? "Analyzing..."
-                  : step === 2
-                    ? "Generate Test →"
-                    : "Continue →"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={loading || isGeneratingTest}
-                className="w-full bg-chestnut text-white py-4 rounded-2xl font-sans font-bold hover:bg-chestnut/90 transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                onClick={handleSubmit(handleFinalSubmit)}
+                disabled={loading}
+                className="bg-white text-black hover:bg-zinc-200 rounded-sm font-medium h-10 px-6"
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  "Start Assessment"
+                  "Continue"
                 )}
-              </button>
+              </Button>
+            ) : (
+              <Button
+                disabled={loading || isGeneratingTest}
+                onClick={handleSubmit(handleFinalSubmit)}
+                className="bg-white text-black hover:bg-zinc-200 rounded-sm font-medium h-10 px-6 disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Execute Protocol"
+                )}
+              </Button>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Small Components ─────────────────────────────────────────────────────────
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <p className="flex items-center gap-1 text-red-500 text-xs font-sans mt-1 animate-in fade-in zoom-in duration-200">
-      <AlertCircle className="w-3 h-3 shrink-0" />
-      {message}
-    </p>
-  );
-}
-
-function Input({ label, placeholder, type = "text", register }: any) {
-  return (
-    <div className="space-y-2">
-      <label className="text-[10px] uppercase tracking-widest font-sans font-bold text-chestnut">
-        {label}
-      </label>
-      <input
-        type={type}
-        placeholder={placeholder}
-        {...register}
-        className="w-full px-4 py-3.5 bg-dust/20 border border-dust/60 rounded-2xl font-sans text-sm focus:outline-none focus:border-dust focus:ring-4 focus:ring-dust/10 transition-all"
-      />
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between text-sm">
-      <span className="text-stone-400">{label}</span>
-      <span className="text-stone-900 font-medium">
-        {value || <span className="text-red-400 italic">missing</span>}
-      </span>
     </div>
   );
 }

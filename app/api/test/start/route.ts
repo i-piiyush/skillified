@@ -14,8 +14,8 @@ export const POST = async (req: Request) => {
       { status: 401 },
     );
   }
-  const userId = session.user.id
-  console.log("user id",userId)
+  const userId = session.user.id;
+  console.log("user id", userId);
 
   try {
     const user = await prisma.user.findUnique({
@@ -33,12 +33,14 @@ export const POST = async (req: Request) => {
         { status: 404 },
       );
     }
+
+
     const session = await prisma.testSession.create({
       data: {
         userId: user.id,
         stack: user.stack,
         domain: user.domain || "",
-        role: user.role || "" ,
+        role: user.role || "",
         currentDiff: 1,
       },
     });

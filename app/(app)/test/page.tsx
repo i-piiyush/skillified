@@ -9,12 +9,19 @@ import {
   RotateCcw,
   Loader2,
   AlertCircle,
+  TerminalSquare
 } from "lucide-react";
 import axios, { AxiosError } from "axios";
+import { useRouter } from "next/navigation";
+
+// Types
 import { Question } from "@/types/frontendQuestions";
 import { authClient } from "@/lib/auth-client";
 import { N8N } from "@/types/n8n";
 import { UserProfile } from "@/types/user";
+
+// Shadcn UI
+import { Button } from "@/components/ui/button";
 
 export default function QuizPage() {
   // Session & Quiz State
@@ -39,10 +46,16 @@ export default function QuizPage() {
   const [pageError, setPageError] = useState<string | null>(null);
 
   const { data: session, isPending } = authClient.useSession();
+  const router = useRouter();
 
   // Initialize Session
   useEffect(() => {
     if (isPending) return;
+
+    if (!session?.user.userOnboarded) {
+      router.replace("/onboard");
+      return;
+    }
 
     const createSession = async () => {
       try {
@@ -58,14 +71,14 @@ export default function QuizPage() {
         }
       } catch (error) {
         console.error("[QuizPage] Error creating session:", error);
-        setPageError("Failed to initialize the quiz session. Please try again.");
+        setPageError("Failed to initialize the sequence. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
     createSession();
-  }, [isPending]);
+  }, [isPending, session, router]);
 
   const currentQuestion = questions[currentIndex];
   const isFinished = currentIndex >= totalQuestions;
@@ -90,14 +103,14 @@ export default function QuizPage() {
       setScore(data.score);
       setNextQuestionData(data.nextQuestion);
       setIsAnswered(true);
-      
+
       if (data.analysis) {
         setAnalysisResult(data.analysis);
       }
     } catch (error) {
       const err = error as AxiosError;
       console.error("[QuizPage] Error submitting answer:", err.response?.data || err.message);
-      setPageError("Failed to submit your answer. Please check your connection.");
+      setPageError("Failed to submit telemetry. Check connection.");
       setSelectedAnswer("");
     } finally {
       setIsSubmitting(false);
@@ -133,7 +146,7 @@ export default function QuizPage() {
       // 1. Fetch user data
       const userRes = await axios.get(`/api/fetch-user/${user_id}`);
       const fetchedUser: UserProfile = userRes.data?.user;
-      
+
       if (!fetchedUser) throw new Error("User profile could not be loaded.");
 
       // 2. Prepare Webhook payload
@@ -151,16 +164,15 @@ export default function QuizPage() {
       // 3. Send to N8N
       await axios.post(process.env.NEXT_PUBLIC_N8N_URL, postData, {
         headers: {
-          "llama-api-key": "sk_prod_12345", // Consider moving this to an API route instead of exposing to the client
+          "llama-api-key": "sk_prod_12345", 
         },
       });
 
       // Redirect user to dashboard
       window.location.href = "/dashboard";
-      
     } catch (error) {
       console.error("[QuizPage] Error in handleDashboard sync:", error);
-      setPageError("Failed to save your final results. Please try again.");
+      setPageError("Failed to compile final results. Please try again.");
     } finally {
       setIsFinishing(false);
     }
@@ -168,21 +180,33 @@ export default function QuizPage() {
 
   // ================= RENDERERS ================= //
 
+  // Background wrapper used in all views
+  const bgWrapper = "min-h-screen bg-black text-zinc-300 font-sans flex items-center justify-center p-6 selection:bg-white selection:text-black relative overflow-hidden";
+  const bgRadial = (
+    <div className="pointer-events-none fixed inset-0 z-0">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_40%)]" />
+    </div>
+  );
+
   // 1. Error Boundary View
   if (pageError && (!questions.length || isFinished)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F0EB] p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl p-8 border border-[#F44336]/20 shadow-sm text-center flex flex-col items-center">
-          <AlertCircle className="w-12 h-12 text-[#F44336] mb-4" />
-          <h2 className="text-2xl font-serif font-semibold mb-2 text-[#2A2927]">Oops, something went wrong</h2>
-          <p className="text-[#9A958E] mb-6 text-sm">{pageError}</p>
-          <button
+      <div className={bgWrapper}>
+        {bgRadial}
+        <div className="max-w-md w-full bg-[#050505] rounded-md p-8 border border-red-900/50 shadow-2xl text-center flex flex-col items-center relative z-10">
+          <AlertCircle className="w-10 h-10 text-red-500 mb-6" />
+          <h2 className="text-2xl font-medium mb-2 text-white tracking-tight">
+            System Failure
+          </h2>
+          <p className="text-zinc-500 mb-8 text-sm font-mono">{pageError}</p>
+          <Button
+            variant="outline"
             onClick={() => window.location.reload()}
-            className="flex items-center justify-center gap-2 bg-[#2A2927] text-white px-6 py-3 rounded-full font-sans text-sm hover:bg-[#1A1918] transition-all"
+            className="w-full h-11 border-zinc-800 bg-transparent text-white hover:bg-zinc-900 rounded-sm"
           >
-            <RotateCcw className="w-4 h-4" />
-            Reload Page
-          </button>
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reload Sequence
+          </Button>
         </div>
       </div>
     );
@@ -191,11 +215,12 @@ export default function QuizPage() {
   // 2. Loading View
   if (loading || isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F0EB]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-[#D27B53] animate-spin" />
-          <p className="text-[#9A958E] uppercase tracking-widest text-sm font-sans">
-            Loading Session...
+      <div className={bgWrapper}>
+        {bgRadial}
+        <div className="flex flex-col items-center gap-5 relative z-10">
+          <Loader2 className="w-8 h-8 text-zinc-400 animate-spin" />
+          <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-mono">
+            Initializing node sequence...
           </p>
         </div>
       </div>
@@ -205,45 +230,46 @@ export default function QuizPage() {
   // 3. Finished / Verdict View
   if (isFinished) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F0EB] p-4">
+      <div className={bgWrapper}>
+        {bgRadial}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-white rounded-2xl p-10 border border-[#E6E2DD] shadow-sm text-center font-serif"
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-md w-full bg-[#050505] rounded-md p-10 border border-zinc-800 shadow-2xl text-center relative z-10"
         >
-          <h2 className="text-4xl font-semibold mb-2 text-[#2A2927]">
-            Test Complete
-          </h2>
-          <p className="text-[#9A958E] mb-8 text-sm font-sans">
-            Here&apos;s how you performed
-          </p>
-          <div className="text-6xl font-mono font-bold text-[#D27B53] mb-1">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-8 flex items-center justify-center gap-2">
+            <TerminalSquare size={14} /> Sequence Complete
+          </div>
+          
+          <div className="text-7xl font-medium text-white mb-4 tracking-tighter">
             {analysisResult?.percentage || "0"}%
           </div>
-          <p className="text-[#9A958E] text-sm font-sans mb-8">
-            {analysisResult?.verdict || "Verdict not available"}
-          </p>
           
+          <p className="text-zinc-400 text-sm mb-10 border-t border-zinc-900 pt-6">
+            {analysisResult?.verdict || "Compiling verdict data..."}
+          </p>
+
           {pageError && (
-             <p className="text-[#F44336] text-sm mb-4 bg-[#FDF3F3] p-3 rounded-lg font-sans">
-                {pageError}
-             </p>
+            <p className="text-red-400 text-xs mb-6 bg-red-950/20 border border-red-900/50 p-3 rounded-sm font-mono">
+              {pageError}
+            </p>
           )}
 
-          <button
+          <Button
             onClick={handleDashboard}
             disabled={isFinishing}
-            className="w-full flex items-center justify-center gap-2 bg-[#D27B53] text-white py-3.5 rounded-xl font-medium font-sans hover:bg-[#b86642] disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+            className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-sm font-medium transition-colors"
           >
             {isFinishing ? (
-               <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-               <>
-                 <RotateCcw className="w-4 h-4" />
-                 Go to dashboard
-               </>
+              <>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Return to Dashboard
+              </>
             )}
-          </button>
+          </Button>
         </motion.div>
       </div>
     );
@@ -253,9 +279,11 @@ export default function QuizPage() {
 
   // 4. Active Quiz View
   return (
-    <div className="min-h-screen flex flex-col items-center pt-12 bg-[#F4F0EB] p-4 overflow-hidden font-serif text-[#2A2927]">
-      {/* Progress bars */}
-      <div className="w-full max-w-2xl flex gap-1.5 px-4 mb-6 z-10">
+    <div className="min-h-screen bg-black text-zinc-300 flex flex-col items-center pt-16 p-6 overflow-hidden font-sans relative selection:bg-white selection:text-black">
+      {bgRadial}
+
+      {/* Flat Wireframe Progress Bar */}
+      <div className="w-full max-w-2xl flex gap-[2px] mb-8 z-10">
         {Array.from({ length: totalQuestions }).map((_, idx) => {
           const width =
             idx < currentIndex
@@ -268,41 +296,39 @@ export default function QuizPage() {
           return (
             <div
               key={idx}
-              className="h-1.5 flex-1 bg-[#E6E2DD] rounded-full overflow-hidden"
+              className="h-[2px] flex-1 bg-zinc-900 overflow-hidden relative"
             >
               <motion.div
                 initial={{ width: "0%" }}
                 animate={{ width }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="h-full bg-[#D27B53]"
+                className="h-full bg-white absolute top-0 left-0"
               />
             </div>
           );
         })}
       </div>
 
-      {/* Counter + score */}
-      <div className="max-w-2xl w-full flex justify-between items-center mb-6 px-4 z-10 font-sans">
-        <span className="text-sm px-3 py-1 bg-white border border-[#E6E2DD] text-gray-600 rounded-md shadow-sm">
-          {currentIndex + 1} / {totalQuestions}
-        </span>
-        <span className="text-sm px-3 py-1 bg-[#D27B53]/10 text-[#D27B53] border border-[#D27B53]/20 rounded-md font-medium">
-          Score: {score}
+      {/* Counter + Score (Monospace Terminal style) */}
+      <div className="max-w-2xl w-full flex justify-between items-center mb-8 z-10 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+        <span>Node // {currentIndex + 1}_{totalQuestions}</span>
+        <span className="text-white bg-white/10 px-2 py-1 rounded-sm border border-white/20">
+          Score // {score}
         </span>
       </div>
 
       {/* Error Toast for mid-quiz submissions */}
       {pageError && !isFinished && (
-        <div className="max-w-2xl w-full px-4 mb-4 z-10">
-           <div className="flex items-center gap-2 text-sm text-[#F44336] bg-[#FDF3F3] p-3 rounded-lg border border-[#F44336]/20 font-sans">
-              <AlertCircle className="w-4 h-4" />
-              {pageError}
-           </div>
+        <div className="max-w-2xl w-full mb-6 z-10">
+          <div className="flex items-center gap-3 text-xs text-red-400 bg-red-950/20 p-3 rounded-sm border border-red-900/50 font-mono">
+            <AlertCircle className="w-4 h-4" />
+            {pageError}
+          </div>
         </div>
       )}
 
-      {/* Stacked cards */}
-      <div className="relative w-full max-w-2xl" style={{ minHeight: 520 }}>
+      {/* Stacked Cards Layout */}
+      <div className="relative w-full max-w-2xl min-h-[500px] z-10">
         <AnimatePresence mode="popLayout">
           {questions.map((question, index) => {
             if (index < currentIndex || index > currentIndex + 2) return null;
@@ -314,59 +340,59 @@ export default function QuizPage() {
               <motion.div
                 key={question.id}
                 layout
-                initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                initial={{ opacity: 0, y: 40, scale: 0.98 }}
                 animate={{
-                  opacity: 1 - offset * 0.25,
-                  y: offset * 20,
-                  scale: 1 - offset * 0.04,
+                  opacity: 1 - offset * 0.3,
+                  y: offset * 12, // Tighter stacking for wireframe look
+                  scale: 1 - offset * 0.02,
                   zIndex: 10 - offset,
                   pointerEvents: isTop ? "auto" : "none",
                 }}
-                exit={{ opacity: 0, x: -300, rotate: -3, scale: 0.95 }}
-                transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-                className="absolute top-0 left-0 w-full bg-white rounded-2xl border border-[#E6E2DD] p-6 md:p-10 flex flex-col shadow-sm"
+                exit={{ opacity: 0, x: -100, scale: 0.98 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute top-0 left-0 w-full bg-[#050505] rounded-md border border-zinc-800 p-6 md:p-10 flex flex-col shadow-2xl"
               >
-                {/* Level badge */}
-                <div className="flex items-center gap-3 mb-5 font-sans">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-[#9A958E]">
-                    {question.level === 0
-                      ? "Easy"
-                      : question.level === 1
-                        ? "Medium"
-                        : "Hard"}
+                {/* Level Badge */}
+                <div className="flex items-center gap-3 mb-6 font-mono text-[10px] uppercase tracking-widest">
+                  <span className={
+                    question.level === 0 ? "text-green-400" :
+                    question.level === 1 ? "text-yellow-400" :
+                    "text-red-400"
+                  }>
+                    [Lvl // {question.level === 0 ? "Easy" : question.level === 1 ? "Medium" : "Hard"}]
                   </span>
-                  <div className="w-1 h-1 rounded-full bg-[#D27B53]" />
-                  <span className="text-xs text-gray-400 font-mono">
-                    {question.skillId}
+                  <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                  <span className="text-zinc-600">
+                    ID_{question.skillId.substring(0, 8)}
                   </span>
                 </div>
 
-                {/* Question text */}
-                <h3 className="text-xl md:text-2xl font-medium leading-snug mb-6">
+                {/* Question Text */}
+                <h3 className="text-xl md:text-2xl font-medium leading-relaxed mb-8 text-white tracking-tight">
                   {question.text}
                 </h3>
 
-                {/* ── MCQ question ── */}
+                {/* MCQ Options */}
                 <div className="flex flex-col gap-3 font-sans">
                   {question.options?.map((option, i) => {
                     const isSelected = selectedAnswer === option;
                     const isRight =
                       backendCorrectAnswer !== null &&
-                      option.trim().toLowerCase() ===
-                        backendCorrectAnswer.trim().toLowerCase();
+                      option.trim().toLowerCase() === backendCorrectAnswer.trim().toLowerCase();
 
-                    let cls =
-                      "border-[#E6E2DD] hover:border-[#D27B53] hover:bg-[#D27B53]/5 text-gray-700 bg-white";
+                    // Wireframe Logic styling
+                    let cls = "border-zinc-800 text-zinc-300 bg-transparent hover:border-zinc-600 hover:bg-zinc-900/50";
 
                     if (isAnswered) {
-                      if (isRight)
-                        cls = "border-[#4CAF50] bg-[#EEF4EF] text-[#2E6B3E]";
-                      else if (isSelected)
-                        cls = "border-[#F44336] bg-[#FDF3F3] text-[#9A2E2E]";
-                      else
-                        cls = "border-[#E6E2DD] text-gray-400 opacity-40 bg-[#F9F8F6]";
+                      if (isRight) {
+                        cls = "border-green-500/50 bg-green-500/10 text-green-400";
+                      } else if (isSelected) {
+                        cls = "border-red-500/50 bg-red-500/10 text-red-400";
+                      } else {
+                        cls = "border-zinc-900 text-zinc-600 bg-transparent opacity-40";
+                      }
                     } else if (isSubmitting && isSelected) {
-                      cls = "border-[#D27B53] bg-[#D27B53]/10 text-[#D27B53]";
+                      cls = "border-zinc-500 bg-zinc-900 text-white";
                     }
 
                     return (
@@ -374,40 +400,39 @@ export default function QuizPage() {
                         key={i}
                         onClick={() => handleSelectMCQ(option)}
                         disabled={isAnswered || isSubmitting}
-                        className={`w-full text-left px-5 py-4 rounded-xl border transition-all flex justify-between items-center shadow-sm disabled:cursor-default ${cls}`}
+                        className={`w-full text-left px-5 py-4 rounded-sm border transition-all flex justify-between items-center disabled:cursor-default ${cls}`}
                       >
-                        <span className="text-[15px] pr-4">{option}</span>
+                        <span className="text-sm pr-4 leading-relaxed">{option}</span>
+                        
                         {isSubmitting && isSelected && (
-                          <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-[#D27B53]" />
+                          <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-zinc-400" />
                         )}
                         {isAnswered && isRight && (
-                          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[#4CAF50]" />
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-400" />
                         )}
                         {isAnswered && isSelected && !isRight && (
-                          <XCircle className="w-5 h-5 flex-shrink-0 text-[#F44336]" />
+                          <XCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
                         )}
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Next button */}
+                {/* Next Button */}
                 {isAnswered && isTop && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="mt-6 flex justify-end"
+                    className="mt-8 flex justify-end"
                   >
-                    <button
+                    <Button
                       onClick={handleNext}
-                      className="flex items-center gap-2 bg-[#2A2927] text-white px-6 py-3 rounded-full font-sans text-sm hover:bg-[#1A1918] transition-all shadow-md"
+                      className="bg-white text-black hover:bg-zinc-200 rounded-sm h-11 px-6 font-medium"
                     >
-                      {currentIndex === totalQuestions - 1
-                        ? "Finish Test"
-                        : "Next Question"}
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                      {currentIndex === totalQuestions - 1 ? "Compile Results" : "Next Node"}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
                   </motion.div>
                 )}
               </motion.div>

@@ -1,6 +1,5 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -23,11 +22,12 @@ model User {
   testSessions   TestSession[]
   weakTopics     WeakTopic[]
 
-  emailVerified Boolean   @default(false)
-  image         String?
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  emailVerified       Boolean   @default(false)
+  userOnboarded Boolean   @default(false)
+  image               String?
+  updatedAt           DateTime  @updatedAt
+  sessions            Session[]
+  accounts            Account[]
 
   roadmaps Roadmap[]
 
@@ -167,7 +167,7 @@ model Verification {
 
 model Roadmap {
   id                 String         @id @default(uuid())
-  userId             String @unique
+  userId             String         @unique
   estimatedMonths    Int
   practicalWeight    Int
   dsaWeight          Int
@@ -204,3 +204,5 @@ enum TopicType {
   DSA
   SYSTEM_DESIGN
 }
+
+

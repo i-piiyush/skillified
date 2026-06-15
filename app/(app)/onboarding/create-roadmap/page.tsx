@@ -2,31 +2,55 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
-import { DOMAINS } from "../assesment/page";
+import { ArrowRight, TerminalSquare, Check, Loader2 } from "lucide-react";
 import axios from "axios";
-import { Question } from "@/types/question";
 import { useRouter } from "next/navigation";
 
+// Types (Adjust paths as needed for your project)
+import { Question } from "@/types/question";
+import { DOMAINS } from "../assesment/page"; // Or redefine here if needed
+
+// Shadcn UI
+import { Button } from "@/components/ui/button";
+
 const INITIALQUESTIONS = [
-  { id: "domain", text: "Yo, what are we cooking today? Which field are you grinding in?", options: DOMAINS },
-  { id: "goal", text: "Dope. What's the main mission? Trying to land a job or just building for the vibes?", options: ["Internship", "SDE 1", "SDE 2", "SDE 3"] },
-  { id: "targetCompany", text: "So which type of company are you actually tryna crack?", options: ["Product based", "Product based startup", "Service based", "MAANG/FAANG level"] },
-  // UPDATED IDs here to match backend JSON expectation:
-  { id: "focusStudyHours", text: "How much time you can give in a day (for studying obv)", options: ["0-1 hours", "2-3 hours", "3-4 hours"] },
-  { id: "academicStatus", text: "Whats your actual acadamic status?", options: ["High school", "Undergraduate", "Postgraduate"] },
+  { 
+    id: "domain", 
+    text: "Which domain are we grinding in? Select your main:", 
+    options: DOMAINS 
+  },
+  { 
+    id: "goal", 
+    text: "Target locked. What's the actual mission? Securing the bag or just building for the vibes?", 
+    options: ["Internship", "SDE 1", "SDE 2", "SDE 3"] 
+  },
+  { 
+    id: "targetCompany", 
+    text: "Specify the boss level. Which tier of company are you trying to crack?", 
+    options: ["Product based", "Product based startup", "Service based", "MAANG/FAANG level"] 
+  },
+  { 
+    id: "focusStudyHours", 
+    text: "Be real. How many compute hours are you dedicating to this daily?", 
+    options: ["0-1 hours", "2-3 hours", "3-4 hours"] 
+  },
+  { 
+    id: "academicStatus", 
+    text: "Current academic status?", 
+    options: ["High school", "Undergraduate", "Postgraduate"] 
+  },
 ];
 
-const TypingIndicator = () => (
+// Terminal-style loading indicator
+const TerminalLoader = () => (
   <motion.div 
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.9, originY: 1 }}
-    className="bg-[#F7F6F3] border border-[#E5E4E0] px-4 py-3.5 rounded-2xl rounded-tl-sm w-16 flex items-center justify-center gap-1 shadow-sm"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-zinc-500 mt-4 pl-4 border-l border-zinc-800"
   >
-    <motion.div className="w-1.5 h-1.5 bg-neutral-400 rounded-full" animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} />
-    <motion.div className="w-1.5 h-1.5 bg-neutral-400 rounded-full" animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} />
-    <motion.div className="w-1.5 h-1.5 bg-neutral-400 rounded-full" animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} />
+    <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />
+    <span>Awaiting system response...</span>
   </motion.div>
 );
 
@@ -34,17 +58,16 @@ export default function RoadmapOnboarding() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isTyping, setIsTyping] = useState(false);
-  const [printedJson, setPrintedJson] = useState<string | null>(null);
-  const [questions,setQuestions] = useState(INITIALQUESTIONS);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [questions, setQuestions] = useState(INITIALQUESTIONS);
   const endRef = useRef<HTMLDivElement>(null);
 
-  const router = useRouter()
-
+  const router = useRouter();
   const MAX_QUESTIONS = 9;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [step, isTyping, printedJson]);
+  }, [step, isTyping]);
 
   const handleSelect = async (option: string) => {
     const updatedAnswers = { ...answers, [questions[step].id]: option };
@@ -55,22 +78,21 @@ export default function RoadmapOnboarding() {
       setTimeout(() => {
         setIsTyping(false);
         setStep(step + 1);
-      }, 800);
+      }, 600); // Slightly faster, snappier terminal feel
     } else if(questions.length < MAX_QUESTIONS) {
       setIsTyping(true);
       try {
-        const res = await axios.post("/api/roadmap/generate-question",{updatedAnswers});
-        const fetchedQuestion:Question = res.data.question;
+        const res = await axios.post("/api/roadmap/generate-question", { updatedAnswers });
+        const fetchedQuestion: Question = res.data.question;
         
-        setQuestions((prev)=>[...questions,{
+        setQuestions((prev) => [...prev, {
           id: fetchedQuestion.jsonKey,
           text: fetchedQuestion.question,
           options: fetchedQuestion.options
         }]);
         setStep(step + 1);
-        
       } catch (error) {
-        console.error("Failed to pull next question", error);
+        console.error("Failed to pull next question node", error);
       } finally {
         setIsTyping(false);
       }
@@ -78,192 +100,181 @@ export default function RoadmapOnboarding() {
   };
 
   const handleGenerate = async () => {
-    
-    console.log("Final Output:", answers);
+    setIsGenerating(true);
+    console.log("Payload:", answers);
 
     try {
-      const res = await axios.post("/api/roadmap/generate-roadmap",{
-        answers
-      })
-
-      if(res.data.success){
-        console.log(res.data.message)
-        router.replace("/dashboard/roadmap")
+      const res = await axios.post("/api/roadmap/generate-roadmap", { answers });
+      if(res.data.success) {
+        console.log(res.data.message);
+        router.replace("/dashboard/roadmap");
       }
-      
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.log(error.message);
       } else {
         console.log(error);
       }
+      setIsGenerating(false);
     }
-    
-
-
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-neutral-900 selection:bg-[#E5E4E0]">
-      <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
-        
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-16">
+    <div className="min-h-screen bg-black text-zinc-300 font-sans selection:bg-white selection:text-black relative overflow-hidden">
+      
+      {/* Subtle Background Radial */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_40%)]" />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 py-12 md:py-24 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
           
-          {/* Left Column */}
+          {/* Left Column: Context / Header */}
           <div className="md:col-span-4 relative">
-            <div className="md:sticky md:top-24 space-y-3">
-              <h1 className="text-2xl lg:text-3xl font-serif text-neutral-900 tracking-tight leading-tight">
-                Let&apos;s map it out.
-              </h1>
-              <p className="text-sm text-neutral-500 max-w-xs leading-relaxed">
-                Answer these few and I&lsquo;ll build your personal path. No fluff.
-              </p>
+            <div className="md:sticky md:top-24 space-y-6">
+              <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
+                <TerminalSquare size={16} className="text-zinc-500" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                  Pathfinder Protocol
+                </span>
+              </div>
+              <div>
+                <h1 className="text-4xl font-medium text-white tracking-tighter mb-4">
+                  Map it out.
+                </h1>
+                <p className="text-sm text-zinc-500 leading-relaxed max-w-sm">
+                  Provide your configuration parameters. We'll strip the fluff and build a custom progression sequence for your exact goal.
+                </p>
+              </div>
+              
+              {/* Progress Indicator */}
+              <div className="hidden md:block pt-8">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-600 mb-3 flex justify-between">
+                  <span>Configuration</span>
+                  <span>{Math.round((step / Math.max(questions.length, 1)) * 100)}%</span>
+                </div>
+                <div className="h-[2px] w-full bg-zinc-900">
+                  <motion.div 
+                    className="h-full bg-white"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(step / Math.max(questions.length, 1)) * 100}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Chat Feed */}
+          {/* Right Column: Terminal Feed */}
           <div className="md:col-span-8 pb-32">
-            <div className="space-y-8 max-w-xl">
-              {questions.slice(0, step + 1).map((q, i) => (
-                <div key={q.id} className="space-y-4">
-                  
-                  {/* Bot Message */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12, scale: 0.95, transformOrigin: "bottom left" }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                    className="flex justify-start"
-                  >
-                    <div className="bg-[#F7F6F3] border border-[#E5E4E0] p-4 lg:p-5 rounded-2xl rounded-tl-sm max-w-[90%] lg:max-w-[85%] shadow-sm transition-shadow hover:shadow-md">
-                      <p className="text-base lg:text-lg font-serif text-neutral-900 leading-snug">
+            <div className="space-y-10 max-w-2xl">
+              {questions.slice(0, step + 1).map((q, i) => {
+                const isAnswered = !!answers[q.id];
+
+                return (
+                  <div key={q.id} className="space-y-4">
+                    
+                    {/* Bot Prompt */}
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2">
+                        [SYS] QUERY_{i + 1}
+                      </div>
+                      <p className="text-base text-zinc-200 leading-relaxed border-l border-zinc-800 pl-4 py-1">
                         {q.text}
                       </p>
-                    </div>
-                  </motion.div>
-
-                  {/* User Answer / Options */}
-                  {answers[q.id] ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9, x: 10 }}
-                      animate={{ opacity: 1, scale: 1, x: 0 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 24 }}
-                      className="flex justify-end"
-                    >
-                      <div className="bg-[#1A1918] text-white px-5 py-2.5 rounded-2xl rounded-tr-sm shadow-md font-medium text-sm">
-                        {answers[q.id]}
-                      </div>
                     </motion.div>
-                  ) : (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15, duration: 0.3 }}
-                      className="pl-2 lg:pl-6"
-                    >
-                      {/* CONDITIONAL RENDER: Dropdown vs Grid */}
-                      {q.options.length > 5 ? (
-                        <div className="relative max-w-xs">
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) handleSelect(e.target.value);
-                            }}
-                            defaultValue=""
-                            className="w-full appearance-none bg-white border border-[#E5E4E0] p-3.5 pr-10 rounded-xl text-sm font-medium text-neutral-600 focus:outline-none focus:border-chestnut hover:border-chestnut transition-colors cursor-pointer shadow-sm"
-                          >
-                            <option value="" disabled>Select your vibe...</option>
-                            {q.options.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+
+                    {/* User Answer / Options */}
+                    {isAnswered ? (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="pl-4"
+                      >
+                        <div className="font-mono text-sm text-white flex items-center gap-2">
+                          <span className="text-zinc-600">&gt;</span> 
+                          <span className="bg-white/10 px-2 py-0.5 rounded-sm border border-white/20">
+                            {answers[q.id]}
+                          </span>
                         </div>
-                      ) : (
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1, duration: 0.3 }}
+                        className="pl-4 pt-2"
+                      >
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {q.options.map((opt, index) => (
-                            <motion.button
+                            <button
                               key={opt}
-                              whileHover={{ scale: 1.02, backgroundColor: "#FCFBFA" }}
-                              whileTap={{ scale: 0.97 }}
-                              initial={{ opacity: 0, x: -8 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.2 + index * 0.05 }}
                               onClick={() => handleSelect(opt)}
-                              className="text-left bg-white border border-[#E5E4E0] p-3.5 rounded-xl text-xs lg:text-sm font-medium text-neutral-600 flex justify-between items-center group transition-colors"
+                              className="text-left bg-transparent border border-zinc-800 p-3.5 rounded-sm text-sm font-medium text-zinc-400 flex justify-between items-center group hover:border-zinc-500 hover:bg-zinc-900 transition-all"
                             >
-                              {opt}
-                              <motion.div 
-                                initial={{ opacity: 0, x: -10 }}
-                                whileHover={{ opacity: 1, x: 0 }}
-                                className="text-chestnut"
-                              >
-                                <Check size={14} />
-                              </motion.div>
-                            </motion.button>
+                              <span className="group-hover:text-zinc-200 transition-colors">{opt}</span>
+                              <Check size={14} className="opacity-0 group-hover:opacity-100 text-white transition-opacity" />
+                            </button>
                           ))}
                         </div>
-                      )}
-                    </motion.div>
-                  )}
-                </div>
-              ))}
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* Typing Indicator */}
               <AnimatePresence>
                 {isTyping && (
-                  <motion.div className="flex justify-start pt-2">
-                    <TypingIndicator />
+                  <motion.div className="flex justify-start">
+                    <TerminalLoader />
                   </motion.div>
                 )}
               </AnimatePresence>
               
+              <div ref={endRef} className="h-1" />
             </div>
 
-            {/* Final Generation CTA & JSON Output */}
+            {/* Final Execution Button */}
             <AnimatePresence>
               {step === questions.length - 1 && answers[questions[step].id] && !isTyping && (
                 <motion.div
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, type: "spring", stiffness: 200, damping: 20 }}
-                  className="pt-12 mt-6 flex flex-col items-end gap-6"
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                  className="pt-12 mt-12 border-t border-zinc-900"
                 >
-                  {/* Generate Button */}
-                  {!printedJson && (
-                    <motion.button 
-                      onClick={handleGenerate}
-                      whileHover={{ scale: 1.03, boxShadow: "0px 10px 30px -10px rgba(140, 39, 30, 0.4)" }}
-                      whileTap={{ scale: 0.96 }}
-                      className="inline-flex items-center gap-2.5 bg-[var(--color-chestnut)] text-white px-6 py-3.5 rounded-2xl font-medium text-sm transition-colors"
-                    >
-                      <Sparkles size={16} />
-                      Generate my roadmap
-                      <ArrowRight size={16} className="ml-1" />
-                    </motion.button>
-                  )}
-
-                  {/* Printed JSON Output Block */}
-                  {printedJson && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="w-full bg-[#1A1918] p-6 rounded-2xl shadow-xl border border-neutral-800"
-                    >
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="text-xs font-medium text-neutral-400 uppercase tracking-widest">Payload Ready</span>
-                        <Check size={16} className="text-emerald-400" />
-                      </div>
-                      <pre className="text-sm font-mono text-emerald-300 whitespace-pre-wrap break-words">
-                        {printedJson}
-                      </pre>
-                    </motion.div>
-                  )}
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-6">
+                    Configuration Complete. Ready to execute.
+                  </div>
+                  
+                  <Button 
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="h-12 px-8 bg-white text-black hover:bg-zinc-200 rounded-sm font-medium transition-colors w-full sm:w-auto"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <span className="font-mono text-[10px] uppercase tracking-widest">Compiling Nodes...</span>
+                      </>
+                    ) : (
+                      <>
+                        Execute Build Sequence
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div ref={endRef} className="h-4 mt-8" />
           </div>
-
         </div>
       </div>
     </div>

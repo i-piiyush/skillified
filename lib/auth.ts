@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
+
 // Create the connection pool
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -44,4 +45,13 @@ export const auth = betterAuth({
     enabled: true,
     autoSignIn: true,
   },
+  user: {
+    additionalFields: {
+      userOnboarded: {
+        type: "boolean",
+        defaultValue: false,
+      },
+    },
+  },
+
 });
