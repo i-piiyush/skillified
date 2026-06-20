@@ -72,12 +72,20 @@ export default function RoadmapPage() {
         const res = await axios.get(`/api/roadmap/fetch-roadmap/${userId}`);
         if (res.data.roadmap) {
           setRoadmap(res.data.roadmap);
-        } else {
+        }
+        
+        else {
           setRoadmap(null); // No roadmap generated yet
         }
       } catch (err) {
         console.error("Error fetching roadmap:", err);
-        setError("Failed to pull roadmap telemetry. N8N might be offline.");
+
+        if(err.response.status == 404){
+          setError(err.response.data.message);
+        }
+        setError("Failed to pull roadmap telemetry.");
+
+
       } finally {
         setLoading(false);
       }
@@ -104,7 +112,7 @@ export default function RoadmapPage() {
           <Button 
             onClick={() => window.location.reload()} 
             variant="outline" 
-            className="w-full border-zinc-800 bg-transparent text-white hover:bg-zinc-900 rounded-sm"
+            className="w-full border-zinc-800 bg-transparent text-white  rounded-sm"
           >
             Retry Connection
           </Button>

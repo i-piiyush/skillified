@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
@@ -47,38 +47,41 @@ export default function QuizPage() {
 
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
+  const hasInitialized = useRef(false);
 
   // Initialize Session
-  useEffect(() => {
-    if (isPending) return;
+useEffect(() => {
+  if (isPending) return;
+  if (hasInitialized.current) return; // ← blocks double-run
+  hasInitialized.current = true;
 
-    if (!session?.user.userOnboarded) {
-      router.replace("/onboard");
-      return;
-    }
+  if (!session?.user.userOnboarded) {
+    router.replace("/onboarding/assesment");
+    return;
+  }
 
-    const createSession = async () => {
-      try {
-        setPageError(null);
-        const res = await axios.post("/api/test/start");
+  const createSession = async () => {
+    try {
+      setPageError(null);
+      const res = await axios.post("/api/test/start");
 
-        if (res.data.question) {
-          setQuestions([res.data.question]);
-          setSessionId(res.data.sessionId);
-          setTotalQuestions(res.data.progress?.total || 10);
-        } else {
-          throw new Error("No question received from the server.");
-        }
-      } catch (error) {
-        console.error("[QuizPage] Error creating session:", error);
-        setPageError("Failed to initialize the sequence. Please try again.");
-      } finally {
-        setLoading(false);
+      if (res.data.question) {
+        setQuestions([res.data.question]);
+        setSessionId(res.data.sessionId);
+        setTotalQuestions(res.data.progress?.total || 10);
+      } else {
+        throw new Error("No question received from the server.");
       }
-    };
+    } catch (error) {
+      console.error("[QuizPage] Error creating session:", error);
+      setPageError("Failed to initialize the sequence. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    createSession();
-  }, [isPending, session, router]);
+  createSession();
+}, [isPending]); 
 
   const currentQuestion = questions[currentIndex];
   const isFinished = currentIndex >= totalQuestions;
@@ -149,27 +152,23 @@ export default function QuizPage() {
 
       if (!fetchedUser) throw new Error("User profile could not be loaded.");
 
-      // 2. Prepare Webhook payload
-      if (!process.env.NEXT_PUBLIC_N8N_URL) {
-        throw new Error("NEXT_PUBLIC_N8N_URL environment variable is missing.");
-      }
+      // const latestSession = await axios.get(`/api/latest-test-session/${user_id}`)
+      // const sessionId = 
 
-      const postData: N8N = {
+     
+
+      const payload: N8N = {
         stack: fetchedUser.stack,
         weakTopics: fetchedUser.weakTopicNames,
         role: fetchedUser.role,
         user_id: fetchedUser.id,
+        sessionId : sessionId
       };
-
+console.log("payload: ",payload)
       // 3. Send to N8N
-      await axios.post(process.env.NEXT_PUBLIC_N8N_URL, postData, {
-        headers: {
-          "llama-api-key": "sk_prod_12345", 
-        },
-      });
+      await axios.post("/api/n8n/hit-n8n", payload);
 
-      // Redirect user to dashboard
-      window.location.href = "/dashboard";
+      router.replace("/dashboard")
     } catch (error) {
       console.error("[QuizPage] Error in handleDashboard sync:", error);
       setPageError("Failed to compile final results. Please try again.");
@@ -202,7 +201,7 @@ export default function QuizPage() {
           <Button
             variant="outline"
             onClick={() => window.location.reload()}
-            className="w-full h-11 border-zinc-800 bg-transparent text-white hover:bg-zinc-900 rounded-sm"
+            className="w-full h-11 border-zinc-800 bg-transparent text-white  rounded-sm"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             Reload Sequence

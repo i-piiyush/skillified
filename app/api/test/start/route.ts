@@ -45,6 +45,8 @@ export const POST = async (req: Request) => {
       },
     });
 
+    console.log("session created: ", session.id)
+
     const count = await prisma.question.count({
       where: {
         domain: user.domain || "",

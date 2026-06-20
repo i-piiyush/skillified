@@ -1,9 +1,9 @@
 import { FeatureCard, RoadmapCard } from "@/types/landing";
 
 export const socialItems = [
-  { label: "Twitter", link: "https://twitter.com" },
-  { label: "GitHub", link: "https://github.com" },
-  { label: "LinkedIn", link: "https://linkedin.com" },
+  { label: "Twitter", link: "https://x.com/piiyush_jsx" },
+  { label: "GitHub", link: "https://github.com/i-piiyush" },
+  { label: "LinkedIn", link: "https://www.linkedin.com/in/piyush-chhabra-552b8a238/" },
 ];
 
 export const menuItems = [

@@ -17,7 +17,10 @@ export async function POST(request: Request) {
     // 1. n8n se aane wale pure json payload ko catch karo
     const body = await request.json();
     const userId: string = body.user_id;
+    const testSessionId = body.session_id
     const result: WeakTopic[] = body.results;
+
+    console.log("result ", result)
 
     const user = await prisma.user.findUnique({
       where: {
@@ -34,6 +37,8 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
+
+
 
     const newlyCreatedTopics = await prisma.$transaction(async (tx) => {
       await tx.weakTopic.deleteMany({
@@ -68,6 +73,15 @@ export async function POST(request: Request) {
 
       return createdTopics;
     });
+
+    await prisma.testSession.update({
+      where:{
+        id:testSessionId
+      },
+      data:{
+        weakTopicsStatus:"COMPLETED"
+      }
+    })
 
     
     return NextResponse.json(

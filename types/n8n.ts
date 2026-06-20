@@ -3,4 +3,5 @@ export type N8N = {
   role: string;
   stack: string[];
   user_id: string;
+  sessionId: string
 };

@@ -1,5 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -22,12 +22,12 @@ model User {
   testSessions   TestSession[]
   weakTopics     WeakTopic[]
 
-  emailVerified       Boolean   @default(false)
+  emailVerified Boolean   @default(false)
   userOnboarded Boolean   @default(false)
-  image               String?
-  updatedAt           DateTime  @updatedAt
-  sessions            Session[]
-  accounts            Account[]
+  image         String?
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
 
   roadmaps Roadmap[]
 
@@ -35,19 +35,20 @@ model User {
 }
 
 model TestSession {
-  id            String       @id @default(uuid())
-  userId        String
-  domain        String
-  stack         String[]
-  role          String
-  currentDiff   Int          @default(1)
-  score         Int          @default(0)
-  totalAnswered Int          @default(0)
-  status        TestStatus   @default(in_progress)
-  answeredIds   String[]     @default([])
-  createdAt     DateTime     @default(now())
-  answers       TestAnswer[]
-  user          User         @relation(fields: [userId], references: [id])
+  id               String          @id @default(uuid())
+  userId           String
+  domain           String
+  stack            String[]
+  role             String
+  currentDiff      Int             @default(1)
+  score            Int             @default(0)
+  totalAnswered    Int             @default(0)
+  weakTopicsStatus WeakTopicStatus @default(NOT_STARTED)
+  status           TestStatus      @default(in_progress)
+  answeredIds      String[]        @default([])
+  createdAt        DateTime        @default(now())
+  answers          TestAnswer[]
+  user             User            @relation(fields: [userId], references: [id])
 }
 
 model TestAnswer {
@@ -115,6 +116,14 @@ enum Role {
 enum TestStatus {
   in_progress
   completed
+}
+
+enum WeakTopicStatus {
+  NOT_STARTED
+
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model Session {
@@ -204,5 +213,3 @@ enum TopicType {
   DSA
   SYSTEM_DESIGN
 }
-
-

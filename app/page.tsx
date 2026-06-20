@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Grainient from "@/components/ui/Grainient";
 import Navbar from "@/components/ui/Navbar";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
@@ -26,6 +26,31 @@ import {
 import { useRouter } from "next/navigation";
 
 function Page() {
+
+  useEffect(() => {
+  const nav = document.querySelector('.nav-blur') as HTMLElement;
+  
+  const applyStyles = (isMobile: boolean) => {
+    if (!nav) return;
+    if (isMobile) {
+      nav.style.backgroundColor = 'rgba(0, 0, 0, 0.01)';
+      nav.style.backdropFilter = 'blur(5px)';
+      nav.style.webkitBackdropFilter = 'blur(30px)';
+    } else {
+      nav.style.backgroundColor = 'transparent';
+      nav.style.backdropFilter = 'none';
+      nav.style.webkitBackdropFilter = 'none';
+    }
+  };
+
+  const mediaQuery = window.matchMedia('(max-width: 1024px)');
+  applyStyles(mediaQuery.matches);
+  
+  const handler = (e: MediaQueryListEvent) => applyStyles(e.matches);
+  mediaQuery.addEventListener('change', handler);
+  
+  return () => mediaQuery.removeEventListener('change', handler);
+}, []);
 
   const router = useRouter()
   return (
@@ -62,7 +87,8 @@ function Page() {
         <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-black/60 to-black" />
       </div>
 
-      <div className="fixed top-0 left-0 w-full z-50 bg-red-400">
+      <div className="nav-blur fixed top-0 left-0 w-full z-50 h-[78px]"
+       >
         <nav
           className="w-screen h-screen pointer-events-none"
           style={{ position: "absolute", top: 0, left: 0 }}
@@ -128,7 +154,7 @@ function Page() {
               >
                 <button
                   onClick={()=>{
-                    router.replace("/onboarding/assesment")
+                    router.replace("/test")
                   }}
                   className="inline-flex items-center justify-center gap-2 bg-white px-6 py-3 text-sm font-medium text-black transition-colors duration-200 hover:bg-zinc-200"
                 >
