@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { generateRoadmap } from "@/lib/gemini";
+import { generateRoadmap } from "@/lib/groq";
 import { prisma } from "@/lib/prisma";
 import { Roadmap } from "@/types/roadmap";
 import { TopicType } from "@prisma/client";
@@ -62,7 +62,7 @@ export const POST = async (req: Request) => {
     });
 
     const topics = [
-      ...(roadmap.practicalTopics ?? []).map((topic, index) => ({
+      ...(roadmap.practicalTopics ?? []).map((topic, _index) => ({
         roadmapId: dbRoadmap.id,
         type: TopicType.PRACTICAL,
         name: topic.name,
@@ -73,7 +73,7 @@ export const POST = async (req: Request) => {
         projects: topic.projects,
       })),
 
-      ...(roadmap.dsaTopics ?? []).map((topic, index) => ({
+      ...(roadmap.dsaTopics ?? []).map((topic, _index) => ({
         roadmapId: dbRoadmap.id,
         type: TopicType.DSA,
         name: topic.name,
@@ -86,7 +86,7 @@ export const POST = async (req: Request) => {
         mediumQuestions: topic.totalQuestion.medium,
       })),
 
-      ...(roadmap.systemDesignTopics ?? []).map((topic, index) => ({
+      ...(roadmap.systemDesignTopics ?? []).map((topic, _index) => ({
         roadmapId: dbRoadmap.id,
         type: TopicType.SYSTEM_DESIGN,
         name: topic.name,

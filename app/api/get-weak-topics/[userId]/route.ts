@@ -29,8 +29,8 @@ export const GET = async (
       },
       { status: 200 },
     );
-  } catch (error: any) {
-    console.log("error fetching Weak topics! ", error.message);
+  } catch (error: unknown) {
+    console.log("error fetching Weak topics! ", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { success: false, message: "server error" },
       { status: 500 },

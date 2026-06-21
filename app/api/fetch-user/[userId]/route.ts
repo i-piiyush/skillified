@@ -33,8 +33,9 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ userId:
       { success: true, message: "user fetched successfully", user },
       { status: 200 },
     );
-  } catch (error: any) {
-    console.log("error fetching user! ", error.message);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log("error fetching user! ", errorMessage);
     return NextResponse.json(
       { success: false, message: "server error" },
       { status: 500 },

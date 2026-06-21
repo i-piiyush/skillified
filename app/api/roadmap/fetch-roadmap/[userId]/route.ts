@@ -23,8 +23,9 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ userId:
       { success: true, message: "roadmap fetched successfully", roadmap},
       { status: 200 },
     );
-  } catch (error: any) {
-    console.log("error fetching user! ", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.log("error fetching user! ", message);
     return NextResponse.json(
       { success: false, message: "server error" },
       { status: 500 },

@@ -396,7 +396,7 @@ export default function DashboardPage() {
                     You killed it!
                   </h3>
                   <p className="text-sm text-zinc-500 mt-1 max-w-sm mx-auto">
-                    You don't have any weak topics available. Your structural
+                    You don&apos;t have any weak topics available. Your structural
                     integrity is at 100%.
                   </p>
                 </div>

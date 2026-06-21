@@ -35,8 +35,9 @@ export const GET = async (
       },
       { status: 200 },
     );
-  } catch (error: any) {
-    console.log("error fetching session! ", error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log("error fetching session! ", errorMessage);
     return NextResponse.json(
       { success: false, message: "server error" },
       { status: 500 },

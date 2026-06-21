@@ -54,8 +54,9 @@ export async function POST(request: Request) {
       { success: true, message: "n8n trigger initiated" },
       { status: 200 },
     );
-  } catch (error: any) {
-    console.error("Retry Proxy Error:", error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Retry Proxy Error:", errorMessage);
 
     if (sessionIdForRollback) {
       await prisma.testSession

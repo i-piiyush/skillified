@@ -1,5 +1,6 @@
 import Groq from "groq-sdk";
 import { prisma } from "./prisma";
+import { LLMQuestion } from "@/types/question";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -390,7 +391,9 @@ Generate EXACTLY ${neededCount} questions now. Each must cover a distinct skill 
 
 // ─── LLM Caller ──────────────────────────────────────────────────────────────
 
-async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
+
+
+async function callLLM(prompt: string, _neededNow: number): Promise<LLMQuestion[]> {
   const MAX_RETRIES = 3;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -427,8 +430,10 @@ async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
 
       const parsed = JSON.parse(text);
       return parsed.questions ?? [];
-    } catch (err: any) {
-      const is429 = err?.status === 429 || err?.message?.includes("rate_limit");
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      const is429 =
+        error.status === 429 || String(error.message ?? "").includes("rate_limit");
 
       if (is429) {
         const wait = 5000 * Math.pow(2, attempt - 1);
@@ -439,7 +444,9 @@ async function callLLM(prompt: string, neededNow: number): Promise<any[]> {
         continue;
       }
 
-      console.error(`❌ Attempt ${attempt} failed: ${err?.message}`);
+      console.error(
+        `❌ Attempt ${attempt} failed: ${error.message ?? String(err)}`,
+      );
       if (attempt < MAX_RETRIES) {
         await sleep(1000);
         continue;
@@ -604,7 +611,7 @@ export const fetchTest = async (
   return allQuestions;
 };
 
-export const generateQuestion = async (userData: Record<string, any>) => {
+export const generateQuestion = async (userData: Record<string, unknown>) => {
   try {
     const prompt = `
 You are a smart onboarding assistant helping build a highly personalized learning roadmap.
@@ -771,7 +778,7 @@ Response Format:
 
 
 export const generateRoadmap = async (
-  userProfile: Record<string, any>,
+  userProfile: Record<string, string | number | boolean | string[]>,
 ) => {
   try {
 const prompt = `

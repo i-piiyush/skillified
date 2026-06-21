@@ -1,4 +1,4 @@
-import { generateQuestion, generateRoadmap } from "@/lib/gemini";
+import { generateQuestion, generateRoadmap } from "@/lib/groq";
 import { Question } from "@/types/question";
 import { NextResponse } from "next/server";
 
@@ -40,8 +40,12 @@ export const POST = async (req: Request) => {
       },
       { status: 200 },
     );
-  } catch (err: any) {
-    console.log("error in genearte question api ", err.message);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.log("error in generate question api", err.message);
+    } else {
+      console.log("error in generate question api", err);
+    }
     return NextResponse.json(
       {
         success: false,

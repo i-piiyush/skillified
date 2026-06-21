@@ -144,7 +144,7 @@ export default function RoadmapOnboarding() {
                   Map it out.
                 </h1>
                 <p className="text-sm text-zinc-500 leading-relaxed max-w-sm">
-                  Provide your configuration parameters. We'll strip the fluff and build a custom progression sequence for your exact goal.
+                  Provide your configuration parameters. We&apos;ll strip the fluff and build a custom progression sequence for your exact goal.
                 </p>
               </div>
               
@@ -154,7 +154,7 @@ export default function RoadmapOnboarding() {
                   <span>Configuration</span>
                   <span>{Math.round((step / Math.max(questions.length, 1)) * 100)}%</span>
                 </div>
-                <div className="h-[2px] w-full bg-zinc-900">
+                <div className="h-0.5 w-full bg-zinc-900">
                   <motion.div 
                     className="h-full bg-white"
                     initial={{ width: 0 }}
@@ -211,7 +211,7 @@ export default function RoadmapOnboarding() {
                         className="pl-4 pt-2"
                       >
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {q.options.map((opt, index) => (
+                          {q.options.map((opt, _index) => (
                             <button
                               key={opt}
                               onClick={() => handleSelect(opt)}

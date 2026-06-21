@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
+// @ts-ignore
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";

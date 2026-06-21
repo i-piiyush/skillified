@@ -1,4 +1,4 @@
-import { fetchStack } from "@/lib/gemini";
+import { fetchStack } from "@/lib/groq";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {

@@ -78,8 +78,9 @@ export const POST = async (req: Request) => {
       },
       { status: 200 },
     );
-  } catch (error) {
-    console.log("error starting test... ", error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown server error";
+    console.log("error starting test... ", message);
     return NextResponse.json(
       {
         message: "Server Error",

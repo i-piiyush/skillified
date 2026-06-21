@@ -121,7 +121,7 @@ export function AnimatedMetric({ label, value, bar }: { label: string; value: st
         <span className="text-zinc-500 group-hover:text-zinc-400 transition-colors">{label}</span>
         <span className="text-white">{value}</span>
       </div>
-      <div className="h-[2px] w-full bg-zinc-900 overflow-hidden">
+      <div className="h-0.5 w-full bg-zinc-900 overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           whileInView={{ width: bar }}

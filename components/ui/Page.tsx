@@ -60,7 +60,7 @@ export default function Loader() {
         className="w-full max-w-sm border border-zinc-800 bg-[#050505] p-8 rounded-md relative z-10 shadow-2xl"
       >
         {/* Top Wireframe Gradient Line */}
-        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-zinc-500/50 to-transparent" />
+        <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-zinc-500/50 to-transparent" />
 
         <div className="space-y-6">
           {/* Header */}
@@ -94,7 +94,7 @@ export default function Loader() {
               <span>{Math.min(progress, 100)}%</span>
             </div>
             
-            <div className="h-[2px] w-full bg-zinc-900 overflow-hidden rounded-full">
+            <div className="h-0.5 w-full bg-zinc-900 overflow-hidden rounded-full">
               <motion.div
                 className="h-full bg-white"
                 initial={{ width: "0%" }}

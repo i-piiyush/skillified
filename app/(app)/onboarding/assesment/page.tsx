@@ -119,7 +119,6 @@ export default function RegistrationPage() {
   });
 
   const {
-    register,
     handleSubmit,
     setValue,
     watch,
@@ -246,10 +245,10 @@ export default function RegistrationPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm"
+            className="fixed inset-0 z-200 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm"
           >
             <div className="w-full max-w-sm border border-zinc-800 bg-[#050505] p-8 rounded-md relative shadow-2xl">
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
               <div className="flex items-center gap-3 border-b border-zinc-900 pb-4 mb-6">
                 <TerminalSquare size={16} className="text-zinc-500" />
                 <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
@@ -266,7 +265,7 @@ export default function RegistrationPage() {
                     <span>Compiling Node Map</span>
                     <span className="animate-pulse">Active</span>
                   </div>
-                  <div className="h-[2px] w-full bg-zinc-900 overflow-hidden rounded-full">
+                  <div className="h-0.5 w-full bg-zinc-900 overflow-hidden rounded-full">
                     <motion.div
                       className="h-full bg-white"
                       initial={{ width: "0%" }}
@@ -284,7 +283,7 @@ export default function RegistrationPage() {
       {/* Main Container */}
       <div className="relative z-10 w-full max-w-lg">
         {/* Flat Wireframe Progress Bar */}
-        <div className="flex gap-[2px] justify-center mb-10 w-full">
+        <div className="flex gap-0.5 justify-center mb-10 w-full">
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
@@ -296,8 +295,8 @@ export default function RegistrationPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-[#050505] p-8 md:p-12 min-h-[500px] flex flex-col justify-between border border-zinc-800 rounded-md shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <div className="bg-[#050505] p-8 md:p-12 min-h-125 flex flex-col justify-between border border-zinc-800 rounded-md shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
 
           <form className="space-y-8 flex-1">
             <AnimatePresence mode="wait">

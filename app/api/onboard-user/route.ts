@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchTest } from "@/lib/gemini";
+import { fetchTest } from "@/lib/groq";
 import { prisma } from "@/lib/prisma";
 
 export const POST = async (req: Request) => {
@@ -78,11 +78,11 @@ export const POST = async (req: Request) => {
       { status: 201 },
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.log("error creating user or generating test ", error);
     
     // Agar by chance user database mein nahi mila
-    if (error.code === 'P2025') {
+    if (error instanceof Error && 'code' in error && error.code === 'P2025') {
       return NextResponse.json(
         {
           message: "User not found. Please register first.",

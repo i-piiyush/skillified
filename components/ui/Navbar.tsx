@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, Variants } from 'framer-motion';
 
 export interface StaggeredMenuItem {
@@ -65,7 +66,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
   const toggleBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const rawColors = colors && colors.length ? colors.slice(0, 4) : ['#1e1e22', '#35353c'];
-  let prelayerColors = [...rawColors];
+  const prelayerColors = [...rawColors];
   if (prelayerColors.length >= 3) {
     const mid = Math.floor(prelayerColors.length / 2);
     prelayerColors.splice(mid, 1);
@@ -102,13 +103,13 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
     })
   };
 
-  const itemNumberVariants: Variants = {
-    closed: { '--sm-num-opacity': 0 } as any,
+  const itemNumberVariants = ({
+    closed: { '--sm-num-opacity': 0 },
     open: (i: number) => ({
       '--sm-num-opacity': 1,
       transition: { delay: itemsStart + 0.1 + i * 0.08, duration: 0.6, ease: easeOut2 }
-    }) as any
-  };
+    })
+  } as unknown) as Variants;
 
   const socialsTitleVariants: Variants = {
     closed: { opacity: 0, transition: { duration: 0.32, ease: easeIn3 } },
@@ -236,7 +237,7 @@ export const Navbar: React.FC<StaggeredMenuProps> = ({
             {logoContent ? (
               logoContent
             ) : (
-              <img
+              <Image
                 src={logoUrl || '/logo.svg'}
                 alt="Logo"
                 className="sm-logo-img block h-8 w-auto object-contain"

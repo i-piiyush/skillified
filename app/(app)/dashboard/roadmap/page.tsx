@@ -13,7 +13,6 @@ import {
   Layers,
   ArrowRight,
   AlertCircle,
-  Loader2
 } from "lucide-react";
 import axios from "axios";
 import { authClient } from "@/lib/auth-client";
@@ -77,14 +76,14 @@ export default function RoadmapPage() {
         else {
           setRoadmap(null); // No roadmap generated yet
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching roadmap:", err);
 
-        if(err.response.status == 404){
-          setError(err.response.data.message);
+        if (err?.response?.status === 404) {
+          setError(err.response?.data?.message || "Roadmap not found.");
+        } else {
+          setError("Failed to pull roadmap telemetry.");
         }
-        setError("Failed to pull roadmap telemetry.");
-
 
       } finally {
         setLoading(false);
@@ -210,8 +209,8 @@ export default function RoadmapPage() {
                 className="relative pl-8 md:pl-12"
               >
                 {/* Timeline Connector */}
-                <div className="absolute left-[-1px] top-6 w-8 md:w-12 h-px bg-zinc-900" />
-                <div className="absolute left-[-5px] top-[20px] w-2.5 h-2.5 rounded-full border-2 border-black bg-zinc-600" />
+                <div className="absolute -left-px top-6 w-8 md:w-12 h-px bg-zinc-900" />
+                <div className="absolute -left-1.25 top-5 w-2.5 h-2.5 rounded-full border-2 border-black bg-zinc-600" />
 
                 {/* Node Card */}
                 <div className="border border-zinc-800 bg-[#050505] rounded-md p-6 sm:p-8 hover:border-zinc-700 transition-colors">
@@ -320,7 +319,7 @@ export default function RoadmapPage() {
           </AnimatePresence>
 
           {/* End of timeline indicator */}
-          <div className="absolute left-[-5px] bottom-0 w-2.5 h-2.5 rounded-full border-2 border-black bg-white" />
+          <div className="absolute -left-1.25 bottom-0 w-2.5 h-2.5 rounded-full border-2 border-black bg-white" />
         </div>
 
         {/* Completion Message */}

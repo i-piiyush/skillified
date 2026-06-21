@@ -35,11 +35,11 @@ function Page() {
     if (isMobile) {
       nav.style.backgroundColor = 'rgba(0, 0, 0, 0.01)';
       nav.style.backdropFilter = 'blur(5px)';
-      nav.style.webkitBackdropFilter = 'blur(30px)';
+      
     } else {
       nav.style.backgroundColor = 'transparent';
       nav.style.backdropFilter = 'none';
-      nav.style.webkitBackdropFilter = 'none';
+    
     }
   };
 

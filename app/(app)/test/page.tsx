@@ -35,9 +35,9 @@ export default function QuizPage() {
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [isAnswered, setIsAnswered] = useState(false);
   const [backendCorrectAnswer, setBackendCorrectAnswer] = useState<string | null>(null);
-  const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
+  const [_isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
   const [nextQuestionData, setNextQuestionData] = useState<Question | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<unknown>(null);
 
   // Loading & Error States
   const [loading, setLoading] = useState(true);
@@ -242,11 +242,11 @@ console.log("payload: ",payload)
           </div>
           
           <div className="text-7xl font-medium text-white mb-4 tracking-tighter">
-            {analysisResult?.percentage || "0"}%
+            {(analysisResult as any)?.percentage || "0"}%
           </div>
           
           <p className="text-zinc-400 text-sm mb-10 border-t border-zinc-900 pt-6">
-            {analysisResult?.verdict || "Compiling verdict data..."}
+            {(analysisResult as any)?.verdict || "Compiling verdict data..."}
           </p>
 
           {pageError && (
@@ -282,7 +282,7 @@ console.log("payload: ",payload)
       {bgRadial}
 
       {/* Flat Wireframe Progress Bar */}
-      <div className="w-full max-w-2xl flex gap-[2px] mb-8 z-10">
+      <div className="w-full max-w-2xl flex gap-0.5 mb-8 z-10">
         {Array.from({ length: totalQuestions }).map((_, idx) => {
           const width =
             idx < currentIndex
@@ -295,7 +295,7 @@ console.log("payload: ",payload)
           return (
             <div
               key={idx}
-              className="h-[2px] flex-1 bg-zinc-900 overflow-hidden relative"
+              className="h-0.5 flex-1 bg-zinc-900 overflow-hidden relative"
             >
               <motion.div
                 initial={{ width: "0%" }}
@@ -327,7 +327,7 @@ console.log("payload: ",payload)
       )}
 
       {/* Stacked Cards Layout */}
-      <div className="relative w-full max-w-2xl min-h-[500px] z-10">
+      <div className="relative w-full max-w-2xl min-h-125 z-10">
         <AnimatePresence mode="popLayout">
           {questions.map((question, index) => {
             if (index < currentIndex || index > currentIndex + 2) return null;
@@ -404,13 +404,13 @@ console.log("payload: ",payload)
                         <span className="text-sm pr-4 leading-relaxed">{option}</span>
                         
                         {isSubmitting && isSelected && (
-                          <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-zinc-400" />
+                          <Loader2 className="w-4 h-4 shrink-0 animate-spin text-zinc-400" />
                         )}
                         {isAnswered && isRight && (
-                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-400" />
+                          <CheckCircle2 className="w-4 h-4 shrink-0 text-green-400" />
                         )}
                         {isAnswered && isSelected && !isRight && (
-                          <XCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
+                          <XCircle className="w-4 h-4 shrink-0 text-red-400" />
                         )}
                       </button>
                     );

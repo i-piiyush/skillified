@@ -223,8 +223,9 @@ export const POST = async (req: Request) => {
       isComplete: false,
       nextQuestion: finalNextQuestion,
     });
-  } catch (error) {
-    console.log("error checking answer...", error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log("error checking answer...", message);
     return NextResponse.json(
       {
         message: "Server Error",
