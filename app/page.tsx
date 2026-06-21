@@ -705,13 +705,17 @@ function Page() {
             </p>
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
               <a
-                href="#adaptive-quiz"
+                onClick={()=>{
+                  router.push("/dashboard")
+                }}
                 className="inline-flex items-center justify-center bg-white px-8 py-4 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
               >
                 Take Adaptive Quiz
               </a>
               <a
-                href="#roadmaps"
+                onClick={()=>{
+                  router.push("/dashboard")
+                }}
                 className="inline-flex items-center justify-center border border-zinc-800 bg-black px-8 py-4 text-sm font-medium text-white transition-colors hover:bg-zinc-900"
               >
                 Create Roadmap

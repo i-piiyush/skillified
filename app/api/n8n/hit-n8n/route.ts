@@ -64,7 +64,7 @@ export async function POST(request: Request) {
           where: { id: sessionIdForRollback },
           data: { weakTopicsStatus: "FAILED" },
         })
-        .catch((err) =>
+        .catch((err:unknown) =>
           console.error("Database Rollback bhi fail ho gaya!", err),
         );
     }
