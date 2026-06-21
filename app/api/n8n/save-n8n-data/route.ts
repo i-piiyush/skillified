@@ -1,7 +1,6 @@
 
 import { prisma } from "@/lib/prisma";
 import { WeakTopic } from "@/types/weakTopic";
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
