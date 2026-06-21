@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
 
 
-    const newlyCreatedTopics = await prisma.$transaction(async (tx:unknown) => {
+    const newlyCreatedTopics = await prisma.$transaction(async (tx) => {
       await tx.weakTopic.deleteMany({
         where: {
           userId: userId,
