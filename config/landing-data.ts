@@ -1,4 +1,6 @@
 import { FeatureCard, RoadmapCard } from "@/types/landing";
+import { ActivityIcon, Cpu, Database, GitBranch, Layers, ShieldAlert } from "lucide-react";
+
 
 export const socialItems = [
   { label: "Twitter", link: "https://x.com/piiyush_jsx" },
@@ -58,3 +60,35 @@ export const roadmapCards: RoadmapCard[] = [
     bullets: ["Networking layers", "Threat models", "Detection tooling", "Incident response"],
   },
 ];
+
+export const PROTOCOLS = [
+  {
+    id: "SYS_01",
+    title: "Adaptive Diagnostics",
+    description: "Real-time technical screens that escalate in difficulty based on your inputs. We expose your exact vulnerabilities instead of testing you on generic trivia.",
+    icon: ActivityIcon,
+    metrics: ["Low Latency", "Dynamic Scaling", "O(1) Feedback"]
+  },
+  {
+    id: "SYS_02",
+    title: "Pathfinder Engine",
+    description: "Dynamic execution threads built for your specific target role. No fluff, just the exact nodes you need to clear to secure the bag.",
+    icon: GitBranch,
+    metrics: ["Role-Specific", "Zero Fluff", "Curated Docs"]
+  },
+  {
+    id: "SYS_03",
+    title: "Vulnerability Telemetry",
+    description: "Brutal reality checks on your skill tree. Track your recovery arc as you patch gaps in your system design, DSA, and practical knowledge.",
+    icon: ShieldAlert,
+    metrics: ["Visual Tracking", "N8N Synced", "Skill Mapping"]
+  }
+];
+
+export const ARCHITECTURE_LAYERS = [
+  { name: "Frontend Interface", tech: "Next.js + React", icon: Layers },
+  { name: "Automation Layer", tech: "N8N Workflows", icon: Cpu },
+  { name: "Data Persistence", tech: "Prisma + Postgres", icon: Database },
+];
+
+
