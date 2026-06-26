@@ -45,22 +45,31 @@ export default function QuizPage() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
 
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession()
+  
   const router = useRouter();
   const hasInitialized = useRef(false);
+
+  
 
   // Initialize Session
 useEffect(() => {
   if (isPending) return;
+
+
   if (hasInitialized.current) return; // ← blocks double-run
   hasInitialized.current = true;
 
+  console.log("test session : ",session)
+
+  
   if (!session?.user.userOnboarded) {
     router.replace("/onboarding/assesment");
-    return;
+    return
   }
 
   const createSession = async () => {
+    setLoading(true)
     try {
       setPageError(null);
       const res = await axios.post("/api/test/start");
@@ -152,11 +161,7 @@ useEffect(() => {
 
       if (!fetchedUser) throw new Error("User profile could not be loaded.");
 
-      // const latestSession = await axios.get(`/api/latest-test-session/${user_id}`)
-      // const sessionId = 
-
-     
-
+    
       const payload: N8N = {
         stack: fetchedUser.stack,
         weakTopics: fetchedUser.weakTopicNames,

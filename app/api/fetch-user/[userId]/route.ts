@@ -20,6 +20,7 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ userId:
         role: true,
         weakTopicNames: true,
         weakTopics: true,
+        userOnboarded:true
       },
     });
 

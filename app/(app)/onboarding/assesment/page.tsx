@@ -99,7 +99,7 @@ export default function RegistrationPage() {
   const stackRef = useRef<HTMLDivElement>(null);
   const domainRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending,refetch } = authClient.useSession();
 
   useEffect(() => {
     if (isPending) {
@@ -220,6 +220,8 @@ export default function RegistrationPage() {
       ]);
 
       if (testStarted) {
+        await refetch()
+        
         router.push("/test");
       } else {
         setIsGeneratingTest(false);

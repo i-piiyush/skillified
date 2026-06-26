@@ -163,7 +163,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 2. Main Polling Logic
+  // 2. Main Polling Loagic
   useEffect(() => {
     if (isPending || !session?.user.id || !isPolling) return;
 
